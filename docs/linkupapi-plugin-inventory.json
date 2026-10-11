@@ -1,0 +1,69 @@
+{
+  "inspected_at": "2026-10-10T23:45:30Z",
+  "tools": [
+    {
+      "name": "mcp__codex_apps__linkupapi_channel_get_conversation",
+      "description": "LinkedIn & email outreach\n\nGet the messages in one conversation thread (read-only; LinkedIn today). Identify it by conversation_id or profile_url. This tool is part of plugin `LinkupAPI`.\n\nexec tool declaration:\n```ts\ndeclare const tools: { mcp__codex_apps__linkupapi_channel_get_conversation(args: { account_id: string; conversation_id?: string; count?: number; cursor?: string; profile_url?: string; }): Promise<CallToolResult>; };\n```"
+    },
+    {
+      "name": "mcp__codex_apps__linkupapi_channel_get_emails",
+      "description": "LinkedIn & email outreach\n\nRead your most recently received emails from your connected mailbox inbox (Gmail / Outlook / SMTP; read-only). Use this for requests like 'get my last N emails', 'check my inbox', or 'show my recent replies'. Bounces are flagged. account_id is optional when only one mailbox is connected; if the user names a specific mailbox (e.g. 'my gmail'), call linkupapi_list_accounts and pass the matching account_id. Pass unread_only to return only unread messages. This tool is part of plugin `LinkupAPI`.\n\nexec tool declaration:\n```ts\ndeclare const tools: { mcp__codex_apps__linkupapi_channel_get_emails(args: {\n  // Email mailbox account_id (from linkupapi_list_accounts). Optional when a single mailbox is connected.\n  account_id?: string;\n  // Max emails to return (e.g. 5).\n  limit?: number;\n  unread_only?: boolean;\n}): Promise<CallToolResult>; };\n```"
+    },
+    {
+      "name": "mcp__codex_apps__linkupapi_channel_get_profile",
+      "description": "LinkedIn & email outreach\n\nProfile & company lookups on a connected channel (read-only; LinkedIn today). Pick an `action` and pass the matching `params`:\n- get_me: no params — returns your own profile.\n- get: { profile_url | identifier, profile_urn? } — full public profile.\n- get_contact: { profile_url } — contact info (email, phone if visible).\n- search_people: { keyword?, location?, current_company?, company_url?, first_name?, last_name?, title?, industry?, school_url?, network?, offset?, limit? }.\n- search_companies: { keyword?, location?, sector?, company_size?, offset?, limit? }.\n- get_company: { company_url } — full company page data.\n- get_candidates: { job_id, total_results? } — applicants for a job (recruiter).\n- get_viewers: { count?, offset? } — who viewed your profile.\n- get_reactions: { profile_url, count?, cursor? } — reactions on a profile's posts.\n- get_comments: { profile_url, count?, cursor? } — comments authored by a profile. This tool is part of plugin `LinkupAPI`.\n\nexec tool declaration:\n```ts\ndeclare const tools: { mcp__codex_apps__linkupapi_channel_get_profile(args: {\n  // Channel account_id from linkupapi_login.\n  account_id: string;\n  action: \"get_me\" | \"get\" | \"get_contact\" | \"search_people\" | \"search_companies\" | \"get_company\" | \"get_candidates\" | \"get_viewers\" | \"get_reactions\" | \"get_comments\";\n  // Action-specific params. See description.\n  params?: { [key: string]: unknown; };\n}): Promise<CallToolResult>; };\n```"
+    },
+    {
+      "name": "mcp__codex_apps__linkupapi_channel_list_messages",
+      "description": "LinkedIn & email outreach\n\nList your inbox on a connected channel (read-only; LinkedIn today). category in INBOX/INMAIL/JOB/UNREAD/ARCHIVED/SPAM. This tool is part of plugin `LinkupAPI`.\n\nexec tool declaration:\n```ts\ndeclare const tools: { mcp__codex_apps__linkupapi_channel_list_messages(args: { account_id: string; category?: \"INBOX\" | \"INMAIL\" | \"JOB\" | \"UNREAD\" | \"ARCHIVED\" | \"SPAM\"; count?: number; cursor?: string; }): Promise<CallToolResult>; };\n```"
+    },
+    {
+      "name": "mcp__codex_apps__linkupapi_channel_list_network",
+      "description": "LinkedIn & email outreach\n\nConnections & invitations lookups on a connected channel (read-only; LinkedIn today). Pick an `action`:\n- list_connections: { count?, offset? } — your connections (paginated, max 1000/call).\n- list_invitations: { count?, offset?, invitation_type? } — received invitations.\n- list_sent: { count?, offset?, invitation_type? } — invitations you sent.\n- check_invitation: { profile_url } — connection status with that profile.\n- recommendations: { count? } — people the channel recommends you connect with. This tool is part of plugin `LinkupAPI`.\n\nexec tool declaration:\n```ts\ndeclare const tools: { mcp__codex_apps__linkupapi_channel_list_network(args: { account_id: string; action: \"list_connections\" | \"list_invitations\" | \"list_sent\" | \"check_invitation\" | \"recommendations\"; params?: { [key: string]: unknown; }; }): Promise<CallToolResult>; };\n```"
+    },
+    {
+      "name": "mcp__codex_apps__linkupapi_channel_recruiter_read",
+      "description": "LinkedIn & email outreach\n\nRecruiter / jobs lookups on a connected channel (read-only, requires recruiter access; LinkedIn today). Pick an `action`:\n- get_posts: { job_id?, count?, offset?, fetch_details? } — your posted jobs. Pass job_id to fetch one specific job.\n- get_candidates: { job_id, count?, offset? } — applicants for a job.\n- get_cv: { application_id } — download an applicant's CV (returned base64). This tool is part of plugin `LinkupAPI`.\n\nexec tool declaration:\n```ts\ndeclare const tools: { mcp__codex_apps__linkupapi_channel_recruiter_read(args: { account_id: string; action: \"get_posts\" | \"get_candidates\" | \"get_cv\"; params?: { [key: string]: unknown; }; }): Promise<CallToolResult>; };\n```"
+    },
+    {
+      "name": "mcp__codex_apps__linkupapi_channel_search_content",
+      "description": "LinkedIn & email outreach\n\nPost search & feed on a connected channel (read-only; LinkedIn today). Pick an `action`:\n- search: { keyword?, post_type?, sort_by?, post_date?, profile_url?, company_url?, author_company?, author_industry?, author_job_title?, mentions_member?, mentions_organization?, posted_by?, count?, offset? }.\n- get_feed: { count?, cursor? } — your home feed.\n- get_comments: { post_url, count?, offset? }.\n- get_reactions: { post_url, count?, offset? }. This tool is part of plugin `LinkupAPI`.\n\nexec tool declaration:\n```ts\ndeclare const tools: { mcp__codex_apps__linkupapi_channel_search_content(args: { account_id: string; action: \"search\" | \"get_feed\" | \"get_comments\" | \"get_reactions\"; params?: { [key: string]: unknown; }; }): Promise<CallToolResult>; };\n```"
+    },
+    {
+      "name": "mcp__codex_apps__linkupapi_channel_send_connection",
+      "description": "LinkedIn & email outreach\n\nSend a connection request on a connected channel (message <=300 chars; LinkedIn today). The recipient is notified immediately — cannot be recalled even if later withdrawn. This tool is part of plugin `LinkupAPI`.\n\nexec tool declaration:\n```ts\ndeclare const tools: { mcp__codex_apps__linkupapi_channel_send_connection(args: { account_id: string; identifier?: string; message?: string; profile_url?: string; }): Promise<CallToolResult>; };\n```"
+    },
+    {
+      "name": "mcp__codex_apps__linkupapi_channel_send_email",
+      "description": "LinkedIn & email outreach\n\nSend an email from your connected mailbox (Gmail / Outlook / SMTP). Delivered immediately from your mailbox and cannot be unsent. Body: pass `text` (plain text — often the best-delivering format for cold outreach), `html`, or both. account_id is optional when only one mailbox is connected; if the user names a specific mailbox (e.g. 'from my gmail'), call linkupapi_list_accounts and pass the matching account_id. This tool is part of plugin `LinkupAPI`.\n\nexec tool declaration:\n```ts\ndeclare const tools: { mcp__codex_apps__linkupapi_channel_send_email(args: {\n  // Email mailbox account_id (from linkupapi_list_accounts). Optional when a single mailbox is connected.\n  account_id?: string;\n  // HTML body (optional).\n  html?: string;\n  // Optional Reply-To address.\n  reply_to?: string;\n  subject: string;\n  // Plain-text body.\n  text?: string;\n  // Recipient email address.\n  to: string;\n}): Promise<CallToolResult>; };\n```"
+    },
+    {
+      "name": "mcp__codex_apps__linkupapi_channel_send_message",
+      "description": "LinkedIn & email outreach\n\nSend a DM on a connected channel (LinkedIn today). Delivered immediately and cannot be unsent. media_file = { data: base64, filename }. media_link = public URL. This tool is part of plugin `LinkupAPI`.\n\nexec tool declaration:\n```ts\ndeclare const tools: { mcp__codex_apps__linkupapi_channel_send_message(args: { account_id: string; media_file?: { data?: string; filename?: string; }; media_link?: string; message_text: string; profile_url: string; }): Promise<CallToolResult>; };\n```"
+    },
+    {
+      "name": "mcp__codex_apps__linkupapi_linkupapi_enrich",
+      "description": "LinkedIn & email outreach\n\nPublic-data enrichment & email tools. No account_id required — uses LinkupAPI's managed pipeline. Pick an `action` and provide the matching `params`:\n- enrich_person: { first_name, last_name, company_name } — finds the LinkedIn URL and returns the full profile.\n- enrich_company: { company_domain | company_url } — company info from a domain or URL.\n- find_email: { linkedin_url } OR { first_name, last_name, company_name | company_domain } — professional email finder.\n- validate_email: { email } — SMTP, MX & catch-all check.\n- reverse_email: { email } — finds the person behind a professional email (personal providers like gmail/yahoo are rejected).\n- search_jobs: { keywords, location?, country?, limit?, is_remote?, job_type? } — job board postings (Indeed/LinkedIn/Glassdoor). country drives the Indeed/Glassdoor region; if omitted it is inferred from location (e.g. 'Madrid, Spain' → spain), else defaults to france. job_type ∈ fulltime|parttime|contract|internship.\n- extract_employees: { company_url, limit? } — employees of a company (LinkedIn search).\nCost: 1 credit per call. This tool is part of plugin `LinkupAPI`.\n\nexec tool declaration:\n```ts\ndeclare const tools: { mcp__codex_apps__linkupapi_linkupapi_enrich(args: {\n  action: \"enrich_person\" | \"enrich_company\" | \"find_email\" | \"validate_email\" | \"reverse_email\" | \"search_jobs\" | \"extract_employees\";\n  // Action-specific params. See description.\n  params?: { [key: string]: unknown; };\n}): Promise<CallToolResult>; };\n```"
+    },
+    {
+      "name": "mcp__codex_apps__linkupapi_linkupapi_get_account",
+      "description": "LinkedIn & email outreach\n\nGet full details of one account (status, country, webhook_url, timestamps). This tool is part of plugin `LinkupAPI`.\n\nexec tool declaration:\n```ts\ndeclare const tools: { mcp__codex_apps__linkupapi_linkupapi_get_account(args: {\n  // Account identifier.\n  account_id: string;\n}): Promise<CallToolResult>; };\n```"
+    },
+    {
+      "name": "mcp__codex_apps__linkupapi_linkupapi_get_credits",
+      "description": "LinkedIn & email outreach\n\nGet the current credit balance for the authenticated API key. This tool is part of plugin `LinkupAPI`.\n\nexec tool declaration:\n```ts\ndeclare const tools: { mcp__codex_apps__linkupapi_linkupapi_get_credits(args: { [key: string]: unknown; }): Promise<CallToolResult>; };\n```"
+    },
+    {
+      "name": "mcp__codex_apps__linkupapi_linkupapi_get_logs",
+      "description": "LinkedIn & email outreach\n\nList API call logs for the authenticated user. Filter by action (e.g. 'send', 'invite'), account_id, or status ('success' / 'error'). This tool is part of plugin `LinkupAPI`.\n\nexec tool declaration:\n```ts\ndeclare const tools: { mcp__codex_apps__linkupapi_linkupapi_get_logs(args: {\n  // Filter by account.\n  account_id?: string;\n  // Filter by action name.\n  action?: string;\n  // Page size (1-200, default 50).\n  limit?: number;\n  // Pagination offset (default 0).\n  offset?: number;\n  status?: \"success\" | \"error\" | \"checkpoint\";\n}): Promise<CallToolResult>; };\n```"
+    },
+    {
+      "name": "mcp__codex_apps__linkupapi_linkupapi_get_usage_stats",
+      "description": "LinkedIn & email outreach\n\nAggregated API usage over the full history: total calls and credits, plus per-account and per-action breakdowns (calls, successes, errors, credits). Pass account_id to get the per-action detail of one account. Optional ISO date range (date_from / date_to, YYYY-MM-DD, date_to inclusive). This tool is part of plugin `LinkupAPI`.\n\nexec tool declaration:\n```ts\ndeclare const tools: { mcp__codex_apps__linkupapi_linkupapi_get_usage_stats(args: {\n  // Scope every figure to this account.\n  account_id?: string;\n  // ISO date, calls at or after.\n  date_from?: string;\n  // ISO date, inclusive.\n  date_to?: string;\n}): Promise<CallToolResult>; };\n```"
+    },
+    {
+      "name": "mcp__codex_apps__linkupapi_linkupapi_list_accounts",
+      "description": "LinkedIn & email outreach\n\nList every channel account connected to your API key — each with its account_id, platform (linkedin/email), mailbox address, provider (gmail/outlook), and status. Call this to pick the right account_id when the user names a specific account or mailbox (e.g. 'my gmail'). A LinkedIn account with a Recruiter seat carries its id in `recruiter.account_id`: that is the account_id linkedin_recruiter_seat takes. This tool is part of plugin `LinkupAPI`.\n\nexec tool declaration:\n```ts\ndeclare const tools: { mcp__codex_apps__linkupapi_linkupapi_list_accounts(args: {\n  // Also list Recruiter seat accounts as their own entries (kind recruiter_seat).\n  include_seats?: boolean;\n}): Promise<CallToolResult>; };\n```"
+    }
+  ]
+}
