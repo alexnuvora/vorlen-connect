@@ -1,7 +1,7 @@
 import {NextRequest,NextResponse} from 'next/server';
 import {randomBytes} from 'node:crypto';
 import {decrypt} from './lib/security.mjs';
-import {makeRememberCookie,makeStandaloneCookie,refreshRememberCookie,REMEMBER_COOKIE,STANDALONE_COOKIE,rememberMaxAge} from './lib/standalone-auth.mjs';
+import {makeRememberCookie,makeStandaloneCookie,refreshRememberCookie,REMEMBER_COOKIE,STANDALONE_COOKIE} from './lib/standalone-auth.mjs';
 
 const csrfName='__Host-vorlen-login-csrf';
 export async function proxy(request:NextRequest){
