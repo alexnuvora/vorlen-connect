@@ -1,0 +1,8 @@
+import {cookies} from 'next/headers';
+import '../login/login.css';
+export const dynamic='force-dynamic';
+export default async function Reset({searchParams}:{searchParams:Promise<{sent?:string}>}){
+ const p=await searchParams;
+ const csrf=(await cookies()).get('__Host-vorlen-login-csrf')?.value||'';
+ return <main className="vl-login"><section className="vl-story"><div className="vl-wordmark"><span className="vl-logomark">V<span>.</span></span>vorlen <strong>connect</strong></div><div className="vl-story-content"><div className="vl-eyebrow">ACCOUNT SECURITY</div><h1>Welcome back.<br/><em>Stay connected.</em></h1><p>Secure access to your professional workspace.</p></div><div className="vl-story-footer">© {new Date().getFullYear()} Vorlen</div></section><section className="vl-form-panel"><div className="vl-mobile-logo">vorlen connect</div><div className="vl-form-wrap"><div className="vl-form-eyebrow">ACCOUNT RECOVERY</div><h2>Reset your password</h2><p className="vl-subheading">Enter your account email and we’ll send you a secure password reset link.</p>{p.sent&&<div className="vl-success" role="status">If this email belongs to an account, a reset link has been sent. Check your inbox.</div>}<form method="post" action="/reset-password/request"><input type="hidden" name="csrf" value={csrf}/><label className="vl-field" htmlFor="email">Email address</label><input className="vl-input" type="email" id="email" name="email" autoComplete="email" required/><button className="vl-submit" type="submit">Send reset link <span>→</span></button></form><p><a href="/login">← Back to sign in</a></p></div></section></main>;
+}
