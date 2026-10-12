@@ -11,7 +11,7 @@ export async function POST(req:Request){
   let action;
   if(kind==='authorization_code'){
    const code=get('code'),verifier=get('code_verifier'),redirect_uri=get('redirect_uri');
-   if(!code||!validPkce(challenge(verifier))||verifier.length<43||verifier.length>128||!redirect_uri)return oauthError('invalid_grant');
+   if(!code||!/^[A-Za-z0-9._~-]{43,128}$/.test(verifier)||!redirect_uri)return oauthError('invalid_grant');
    Object.assign(params,{secret_hash:digest(code),pkce_challenge:challenge(verifier),redirect_uri});action='exchange';
   }else if(kind==='refresh_token'){if(!get('refresh_token'))return oauthError('invalid_grant');params.secret_hash=digest(get('refresh_token'));action='refresh';}
   else return oauthError('unsupported_grant_type');
