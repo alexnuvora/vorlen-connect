@@ -1,0 +1,39 @@
+name: Install Chromium on Oracle VM
+on:
+  push:
+    branches: [feature/interactive-browser-broker]
+    paths: ['.github/workflows/install-oracle-chromium.yml']
+permissions:
+  contents: read
+jobs:
+  install:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Install Chromium and inspect host resources
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VORLEN_WORKER_SSH_PRIVATE_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          KEY="$(mktemp)"
+          trap 'rm -f "$KEY"' EXIT
+          test -n "${SSH_PRIVATE_KEY:-}"
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$KEY"
+          ssh-keygen -y -P '' -f "$KEY" >/dev/null
+          ssh -i "$KEY" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15 ubuntu@145.241.230.145 'bash -se' <<'REMOTE'
+          set -euo pipefail
+          test "$(hostname)" = vorlen
+          echo "OS: $(. /etc/os-release; echo "$PRETTY_NAME")"
+          echo "Before:"; free -h; df -h /
+          sudo -n apt-get update -qq
+          sudo -n env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends chromium-browser
+          echo "Chromium binary:"
+          command -v chromium || command -v chromium-browser || true
+          chromium --version 2>/dev/null || chromium-browser --version
+          echo "Snap state:"
+          snap list chromium || true
+          echo "After:"; free -h; df -h /
+          echo "CHROMIUM_INSTALL_COMPLETED"
+          REMOTE
