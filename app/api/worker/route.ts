@@ -1,6 +1,5 @@
 import { NextRequest } from 'next/server';
 import { timingSafeEqual } from 'node:crypto';
-import { SupabaseStore } from '@/lib/supabase-store.mjs';
 
 export const dynamic = 'force-dynamic';
 function authorised(request: NextRequest) {
