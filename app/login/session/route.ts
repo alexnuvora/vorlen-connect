@@ -5,13 +5,17 @@ export const dynamic='force-dynamic';
 export async function POST(req:Request){
  const originHeader=req.headers.get('origin');
  const fetchSite=req.headers.get('sec-fetch-site');
+ const host=req.headers.get('x-forwarded-host')||req.headers.get('host');
  const canonical=canonicalOrigin(process.env.APP_ORIGIN);
- // Vercel rewrites the internal request URL/Host; browser Origin is the canonical
- // navigation origin. Only allow the fixed app origin or this project's previews.
- const isPreview=process.env.VERCEL_ENV==='preview'&&typeof originHeader==='string'&&
-   /^https:\/\/vorlen-connect-[a-z0-9-]+-talent-flow3\.vercel\.app$/.test(originHeader);
- const origin=isPreview?originHeader:canonical;
- if(originHeader!==origin || (fetchSite && fetchSite!=='same-origin' && fetchSite!=='none'))
+ // Only trust a fixed project hostname. Browser Origin can be absent on some
+ // form submissions; in that case Fetch Metadata must prove same-origin.
+ const preview=process.env.VERCEL_ENV==='preview' && typeof host==='string' &&
+   /^vorlen-connect-[a-z0-9-]+-talent-flow3\.vercel\.app$/.test(host);
+ const origin=preview?'https://'+host:canonical;
+ if(typeof host!=='string'||new URL(origin).host!==host||
+    (originHeader!==null&&originHeader!==origin)||
+    (fetchSite!==null&&fetchSite!=='same-origin')||
+    (originHeader===null&&fetchSite!=='same-origin'))
    return new Response('Forbidden',{status:403});
  if(!standaloneConfigured())return new Response('Authentication is not configured.',{status:503});
  if(!req.headers.get('content-type')?.startsWith('application/x-www-form-urlencoded'))return new Response('Forbidden',{status:403});
