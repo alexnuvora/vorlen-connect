@@ -5,6 +5,8 @@ on:
       - 'app/chatgpt-auth.ts'
       - 'app/login/**'
       - 'app/logout/**'
+      - 'app/reset-password/**'
+      - 'proxy.ts'
       - 'lib/standalone-auth.mjs'
       - '.github/workflows/standalone-auth-checks.yml'
   workflow_dispatch:
@@ -25,6 +27,6 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Lint changed auth files
-        run: pnpm exec eslint app/chatgpt-auth.ts app/login/page.tsx app/login/session/route.ts app/logout/route.ts
+        run: pnpm exec eslint app/chatgpt-auth.ts app/login/page.tsx app/login/session/route.ts app/logout/route.ts app/reset-password/**/*.tsx app/reset-password/**/route.ts proxy.ts
       - run: pnpm test
       - run: pnpm build
