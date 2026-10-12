@@ -1,7 +1,7 @@
 import {NextResponse} from 'next/server';
 import {cookies} from 'next/headers';
 import {timingSafeEqual} from 'node:crypto';
-import {authenticatePassword,makeStandaloneCookie,STANDALONE_COOKIE,standaloneConfigured} from '@/lib/standalone-auth.mjs';
+import {authenticatePassword,makeStandaloneCookie,STANDALONE_COOKIE,REMEMBER_COOKIE,rememberMaxAge,makeRememberCookie,standaloneConfigured} from '@/lib/standalone-auth.mjs';
 import {safeReturn} from '@/lib/auth-tokens.mjs';
 export const dynamic='force-dynamic';
 export async function POST(req:Request){
@@ -19,10 +19,12 @@ export async function POST(req:Request){
   if(typeof csrf!=='string'||typeof stored!=='string'||!/^[a-f0-9]{64}$/.test(csrf)||!/^[a-f0-9]{64}$/.test(stored)||!timingSafeEqual(Buffer.from(csrf),Buffer.from(stored)))return new Response('Invalid sign-in form. Refresh the login page.',{status:403});
   const email=form.get('email'),password=form.get('password');
   if(typeof email!=='string'||typeof password!=='string')throw Error('Invalid credentials');
-  const {token,expiresAt}=await authenticatePassword(email,password);
+  const {token,refreshToken,expiresAt}=await authenticatePassword(email,password);
   const returnTo=safeReturn(String(form.get('return_to')||'/'));
   const res=new NextResponse(null,{status:303,headers:{Location:returnTo}});
   res.cookies.set(STANDALONE_COOKIE,await makeStandaloneCookie(token,expiresAt),{httpOnly:true,secure:true,sameSite:'lax',path:'/',maxAge:2700});
+  if(form.get('remember')==='yes'&&refreshToken){res.cookies.set(REMEMBER_COOKIE,await makeRememberCookie(refreshToken),{httpOnly:true,secure:true,sameSite:'lax',path:'/',maxAge:rememberMaxAge});}
+  else res.cookies.set(REMEMBER_COOKIE,'',{httpOnly:true,secure:true,sameSite:'lax',path:'/',maxAge:0});
   res.cookies.set('__Host-vorlen-login-csrf','',{httpOnly:true,secure:true,sameSite:'strict',path:'/',maxAge:0});
   res.headers.set('Cache-Control','no-store');return res;
  }catch{
