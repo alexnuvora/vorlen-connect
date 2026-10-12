@@ -6,7 +6,7 @@ export async function POST(req:Request){
   const p=await req.json() as Record<string,unknown>;
   if(!Array.isArray(p.redirect_uris)||p.redirect_uris.length<1||p.redirect_uris.length>5||!p.redirect_uris.every(x=>typeof x==='string'&&validRedirect(x)))return oauthError('invalid_redirect_uri');
   if(p.token_endpoint_auth_method&&p.token_endpoint_auth_method!=='none')return oauthError('invalid_client_metadata');
-  if(p.grant_types&&JSON.stringify(p.grant_types)!==JSON.stringify(['authorization_code']))return oauthError('invalid_client_metadata');
+  if(p.grant_types&&(!Array.isArray(p.grant_types)||!p.grant_types.includes('authorization_code')||!p.grant_types.every(x=>x==='authorization_code'||x==='refresh_token')))return oauthError('invalid_client_metadata');
   const client_id='vc_'+randomToken(),client_name=typeof p.client_name==='string'?p.client_name.slice(0,160):'ChatGPT MCP Client';
   const result=await store('register',{client_id,client_name,redirect_uris:[...new Set(p.redirect_uris)]});
   if(result.changes!==1)return oauthError('server_error',503);
