@@ -21,7 +21,7 @@
   "crons": [
     {
       "path": "/api/cron/linkedin-publish",
-      "schedule": "0 * * * *"
+      "schedule": "0 9 * * *"
     }
   ]
 }
