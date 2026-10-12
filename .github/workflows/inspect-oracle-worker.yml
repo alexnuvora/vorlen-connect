@@ -1,0 +1,23 @@
+name: Inspect Vorlen Oracle Worker
+on:
+  push:
+    branches: [ops/oracle-worker-setup-20261012]
+    paths: ['.github/workflows/inspect-oracle-worker.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Inspect host over SSH (read only)
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VORLEN_WORKER_SSH_PRIVATE_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          KEY="$(mktemp)"
+          trap 'rm -f "$KEY"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$KEY"
+          ssh -i "$KEY" -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=12 ubuntu@145.241.230.145 'set -e; echo "HOST=$(hostname)"; echo "OS=$( . /etc/os-release; echo "$PRETTY_NAME" )"; echo "ARCH=$(uname -m)"; free -h; df -h /; echo "SERVICES:"; systemctl list-units --type=service --state=running --no-pager --no-legend | head -25; echo "LISTENERS:"; ss -lnt | head -20; echo "CONTAINERS:"; command -v docker || true; echo "RUNTIMES:"; command -v node || true; command -v python3 || true'
