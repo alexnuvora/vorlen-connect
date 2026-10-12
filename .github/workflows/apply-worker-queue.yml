@@ -1,0 +1,37 @@
+name: Apply Vorlen Session Management Schema
+on:
+  push:
+    branches: [feature/session-connection-management]
+    paths:
+      - '.github/workflows/apply-worker-queue.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Apply session migration to exact Vorlen project
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.VORLEN_CONNECT_SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.VORLEN_CONNECT_SUPABASE_DB_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${SUPABASE_ACCESS_TOKEN:-}"
+          test -n "${SUPABASE_DB_PASSWORD:-}"
+          supabase link --project-ref oulypjxpbrlxbjrxzryf --password "$SUPABASE_DB_PASSWORD"
+          supabase db push --linked
+          node --input-type=module <<'NODE'
+          const query="select to_regclass('public.vc_linkedin_session_connections') is not null as sessions_present, (select relrowsecurity from pg_class where oid='public.vc_linkedin_session_connections'::regclass) as rls_enabled, exists(select 1 from pg_proc where proname='vc_session_manage' and pronamespace='public'::regnamespace) as management_present";
+          const res=await fetch('https://api.supabase.com/v1/projects/oulypjxpbrlxbjrxzryf/database/query',{method:'POST',headers:{Authorization:'Bearer '+process.env.SUPABASE_ACCESS_TOKEN,'Content-Type':'application/json'},body:JSON.stringify({query,read_only:true})});
+          if(!res.ok)throw Error('read-only audit failed: HTTP '+res.status);
+          const body=await res.json();const row=Array.isArray(body)?body[0]:body?.result?.[0];
+          if(!row?.sessions_present||!row?.rls_enabled||!row?.management_present)throw Error('Session lifecycle schema absent');
+          console.log('PASS: Vorlen session connection table, RLS, session management RPC present');
+          NODE

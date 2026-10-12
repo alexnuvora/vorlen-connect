@@ -1,0 +1,28 @@
+name: Verify Session Connection UI
+on:
+  push:
+    branches: [feature/session-connection-ui]
+    paths:
+      - '.github/workflows/verify-session-ui.yml'
+      - 'app/session-connections.tsx'
+      - 'app/direct-linkedin.tsx'
+      - 'app/api/v1/linkedin/sessions/route.ts'
+      - 'lib/session-integration.mjs'
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: bash scripts/install-pnpm.sh
+      - name: TypeScript validation
+        run: ./node_modules/.bin/tsc --noEmit
+      - name: Session security tests
+        run: node --test tests/session-integration.test.mjs tests/session-vault.test.mjs

@@ -1,0 +1,20 @@
+name: Verify LinkedIn Session Foundation
+on:
+  push:
+    branches: [feature/session-broker-hardening]
+    paths:
+      - '.github/workflows/test-session-integration.yml'
+      - 'lib/session-integration.mjs'
+      - 'tests/session-integration.test.mjs'
+      - 'lib/session-vault.mjs'
+      - 'tests/session-vault.test.mjs'
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run session state and leakage tests
+        run: node --test tests/session-integration.test.mjs tests/session-vault.test.mjs
