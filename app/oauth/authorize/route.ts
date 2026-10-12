@@ -14,7 +14,7 @@ export async function GET(req:NextRequest){
  if(!user){const back='/oauth/authorize'+req.nextUrl.search;return NextResponse.redirect(new URL('/login?return_to='+encodeURIComponent(back),req.url),303);}
  const csrf=randomToken();
  const value=await seal({iat:Date.now(),exp:Date.now()+600000,client_id,redirect_uri,challenge,state,resource,csrf},process.env.VORLEN_SESSION_KEY,'oauth-pending');
- const res=new NextResponse(formPage(client.client_name,csrf),{headers:{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','Content-Security-Policy':"default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'"}});
+ const res=new NextResponse(formPage(client.client_name,csrf),{headers:{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','Content-Security-Policy':"default-src 'none'; style-src 'unsafe-inline'; form-action 'self' https://chatgpt.com; base-uri 'none'; frame-ancestors 'none'"}});
  res.cookies.set(pendingCookie,value,{httpOnly:true,secure:true,sameSite:'lax',path:'/',maxAge:600});
  return res;
 }
@@ -26,11 +26,11 @@ export async function POST(req:NextRequest){
   const form=await req.formData();
   if(form.get('csrf')!==pending.csrf)return new Response('Invalid authorisation',{status:403});
   const valid=await registered(pending.client_id,pending.redirect_uri);
-  if(!valid)return new Response('OAuth client no longer valid',{status:400});
+  if(!valid)return new Response('OAuth client no longer valid; restart the connection in ChatGPT.',{status:400,headers:{'Cache-Control':'no-store'}});
   const clear=(url:string)=>{const response=NextResponse.redirect(url,303);response.cookies.set(pendingCookie,'',{httpOnly:true,secure:true,sameSite:'lax',path:'/',maxAge:0});return response;};
   if(form.get('decision')!=='approve'){const u=new URL(pending.redirect_uri);u.searchParams.set('error','access_denied');if(pending.state)u.searchParams.set('state',pending.state);return clear(u.href);}
   const code=digest(pending.csrf+process.env.VORLEN_SESSION_KEY);const r=await store('issue_code',{client_id:pending.client_id,redirect_uri:pending.redirect_uri,pkce_challenge:pending.challenge,resource:RESOURCE,secret_hash:digest(code)});
   if(r.changes!==1)return new Response('Could not issue authorisation',{status:503});
   return clear(safeRedirect(pending.redirect_uri,code,pending.state));
- }catch{return new Response('Authorisation expired or invalid',{status:400});}
+ }catch(e){console.error('OAuth consent failed',e instanceof Error?e.name:'UnknownError');return new Response('Authorisation session expired or invalid. Return to ChatGPT and start the connection again.',{status:400,headers:{'Cache-Control':'no-store'}});}
 }
