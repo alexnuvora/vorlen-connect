@@ -1,4 +1,5 @@
 import importlib.util
+import sys
 import json
 from pathlib import Path
 import os
@@ -7,6 +8,7 @@ import time
 import unittest
 import uuid
 from cryptography.exceptions import InvalidTag
+sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'worker'))
 spec=importlib.util.spec_from_file_location('worker',Path(__file__).resolve().parents[1]/'worker/session_worker.py')
 worker=importlib.util.module_from_spec(spec)
 spec.loader.exec_module(worker)

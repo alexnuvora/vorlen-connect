@@ -2,7 +2,7 @@ name: Verify and deploy native session broker
 on:
   push:
     branches: [main, feature/live-session-broker]
-    paths: ['worker/session_worker.py', 'worker/deploy-session.sh', 'worker/browser-smoke.py', 'worker/vorlen-session.service', 'supabase/migrations/20261012090000_session_broker_jobs.sql', 'tests/session-broker*', 'tests/session-worker-route.test.mjs', '.github/workflows/session-broker-release.yml']
+    paths: ['worker/native_*.py', 'lib/native-*.mjs', 'lib/session-input.mjs', 'tests/native-*', 'supabase/migrations/*_native_channels_and_adapters.sql', 'worker/session_worker.py', 'worker/deploy-session.sh', 'worker/browser-smoke.py', 'worker/vorlen-session.service', 'supabase/migrations/20261012090000_session_broker_jobs.sql', 'tests/session-broker*', 'tests/session-worker-route.test.mjs', '.github/workflows/session-broker-release.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -26,8 +26,8 @@ jobs:
         with:
           node-version: '22'
       - run: npm install --prefix /tmp/vorlen-test zod@3.25.76 typescript@5.9.3 && ln -s /tmp/vorlen-test/node_modules node_modules
-      - run: node --test tests/session-broker.test.mjs tests/session-worker-route.test.mjs
-      - run: pip install cryptography==46.0.3 && python tests/session-broker-worker.py
+      - run: node --test tests/session-broker.test.mjs tests/session-worker-route.test.mjs tests/native-routing.test.mjs
+      - run: pip install cryptography==46.0.3 && python tests/session-broker-worker.py && python tests/native-adapters-worker.py
       - name: Test isolated SQL state machine and permissions
         env:
           PGPASSWORD: postgres
@@ -42,7 +42,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: 2.120.0
       - name: Apply additive migration to Vorlen Supabase through CLI
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.VORLEN_CONNECT_SUPABASE_ACCESS_TOKEN }}
@@ -51,8 +51,9 @@ jobs:
           set -euo pipefail
           supabase link --project-ref oulypjxpbrlxbjrxzryf --password "$SUPABASE_DB_PASSWORD"
           supabase db push --linked
+          supabase db advisors --linked --type security --level warn --fail-on error
           node --input-type=module <<'NODE'
-          const query="select to_regclass('public.vc_session_jobs') is not null as jobs, (select relrowsecurity from pg_class where oid='public.vc_session_jobs'::regclass) as rls, has_function_privilege('service_role','public.vc_session_worker(text,text,jsonb)','execute') as worker, not has_function_privilege('anon','public.vc_session_worker(text,text,jsonb)','execute') as restricted";
+          const query="select exists(select 1 from information_schema.columns where table_schema='public' and table_name='vc_linkedin_session_connections' and column_name='channel') as channel, to_regclass('public.vc_session_jobs') is not null as jobs, (select relrowsecurity from pg_class where oid='public.vc_session_jobs'::regclass) as rls, has_function_privilege('service_role','public.vc_session_worker(text,text,jsonb)','execute') as worker, not has_function_privilege('anon','public.vc_session_worker(text,text,jsonb)','execute') as restricted";
           const res=await fetch('https://api.supabase.com/v1/projects/oulypjxpbrlxbjrxzryf/database/query',{method:'POST',headers:{Authorization:'Bearer '+process.env.SUPABASE_ACCESS_TOKEN,'Content-Type':'application/json'},body:JSON.stringify({query,read_only:true})});
           if(!res.ok)throw Error('Schema audit HTTP '+res.status);
           const rows=await res.json();if(!rows[0]||Object.values(rows[0]).some(v=>v!==true))throw Error('Session schema verification failed');
@@ -75,5 +76,5 @@ jobs:
           printf '%s\n' "$SSH_PRIVATE_KEY" > "$KEY"
           SSH_OPTS=(-i "$KEY" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15 -o ServerAliveInterval=10 -o ServerAliveCountMax=2)
           ssh "${SSH_OPTS[@]}" ubuntu@145.241.230.145 'mkdir -p /tmp/vorlen-session-release && chmod 700 /tmp/vorlen-session-release'
-          scp "${SSH_OPTS[@]}" worker/session_worker.py worker/browser-smoke.py worker/vorlen-session.service ubuntu@145.241.230.145:/tmp/vorlen-session-release/
+          scp "${SSH_OPTS[@]}" worker/session_worker.py worker/native_linkedin.py worker/native_mail.py worker/browser-smoke.py worker/vorlen-session.service ubuntu@145.241.230.145:/tmp/vorlen-session-release/
           ssh "${SSH_OPTS[@]}" ubuntu@145.241.230.145 'bash -se' < worker/deploy-session.sh

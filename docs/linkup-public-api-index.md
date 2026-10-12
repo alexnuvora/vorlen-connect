@@ -1,0 +1,204 @@
+# Upstream public API scope
+
+Snapshot of the official documentation index retrieved 12 October 2026.
+Source: https://docs.linkupapi.com/llms.txt
+This inventories upstream capabilities; it does not claim Vorlen implements them.
+
+# LinkUp API
+
+- [Introduction](https://docs.linkupapi.com/api-reference/v2/introduction.md): Connect your AI agent to B2B channels
+- [MCP Setup](https://docs.linkupapi.com/api-reference/v2/mcp-setup.md): Connect LinkupAPI to Claude, ChatGPT, Gemini, Cursor, or any MCP-compatible LLM in under 2 minutes.
+- [Platform Best Practices](https://docs.linkupapi.com/api-reference/v2/best-practices.md): Limits, guidelines, and recommendations to use LinkupAPI safely
+- [Migration from V1 to V2](https://docs.linkupapi.com/api-reference/v2/migration.md): Complete guide to migrate your LinkupAPI integration from V1.x to V2
+- [Error Codes](https://docs.linkupapi.com/api-reference/v2/error-codes.md): Complete reference of V2 API error codes and their meanings
+- [Connect Account](https://docs.linkupapi.com/api-reference/v2/accounts/login.md): Connect a channel account to start using the API
+- [Verify Checkpoint (2FA)](https://docs.linkupapi.com/api-reference/v2/accounts/checkpoint.md): Submit a verification code to complete account connection
+- [Autoconfig Provider](https://docs.linkupapi.com/api-reference/v2/email/autoconfig.md): Detect the provider and IMAP/SMTP settings for an email address
+- [List Accounts](https://docs.linkupapi.com/api-reference/v2/accounts/list-accounts.md): List all accounts associated with your API key
+- [Get Account Details](https://docs.linkupapi.com/api-reference/v2/accounts/get-account.md): Get detailed information about a specific account
+- [Set Proxy Country](https://docs.linkupapi.com/api-reference/v2/accounts/set-country.md): Change the country of the managed proxy of a connected LinkedIn account
+- [Delete Account](https://docs.linkupapi.com/api-reference/v2/accounts/delete-account.md): Disconnect an account and delete everything attached to it
+- [Get My Profile](https://docs.linkupapi.com/api-reference/v2/profiles/get-me.md): Retrieve the profile information of the authenticated account.
+- [Get Profile Info](https://docs.linkupapi.com/api-reference/v2/profiles/get-profile.md): Retrieve the profile information of any user.
+- [Get Contact Info](https://docs.linkupapi.com/api-reference/v2/profiles/get-contact.md): Retrieve the contact information of a user.
+- [Visit Profile](https://docs.linkupapi.com/api-reference/v2/profiles/visit.md): Visit a profile to trigger a profile view notification.
+- [Search People](https://docs.linkupapi.com/api-reference/v2/profiles/search-people.md): Search for profiles using various filters.
+- [Search People Nav](https://docs.linkupapi.com/api-reference/v2/profiles/search-people-nav.md): Search leads with Sales Nav using its full filter set.
+- [Search People Recruiter](https://docs.linkupapi.com/api-reference/v2/profiles/search-people-recruiter.md): Search candidates with a LinkedIn Recruiter (Lite) seat.
+- [Check InMail](https://docs.linkupapi.com/api-reference/v2/profiles/check-inmail.md): Find out, for up to 100 profiles at once, who can be InMailed for free (Open Profile).
+- [Check InMail Seat](https://docs.linkupapi.com/api-reference/v2/profiles/check-inmail-seat.md): Know whether a Sales Nav seat can send InMails right now, without sending one.
+- [Typeahead (Filter Suggestions)](https://docs.linkupapi.com/api-reference/v2/profiles/typeahead.md): Autocomplete a search filter value and get the ids LinkedIn expects
+- [Search Companies](https://docs.linkupapi.com/api-reference/v2/profiles/search-companies.md): Search for company pages using various filters.
+- [Get Company Info](https://docs.linkupapi.com/api-reference/v2/profiles/get-company.md): Retrieve detailed information about a company page.
+- [Get Profile Viewers](https://docs.linkupapi.com/api-reference/v2/profiles/get-viewers.md): Retrieve the list of people who recently viewed your profile.
+- [Get Profile Reactions](https://docs.linkupapi.com/api-reference/v2/profiles/get-reactions.md): Retrieve the reactions (likes, celebrates, etc.) made by a user.
+- [Get Profile Comments](https://docs.linkupapi.com/api-reference/v2/profiles/get-comments.md): Retrieve the comments made by a user on posts and articles.
+- [Get Profile Posts](https://docs.linkupapi.com/api-reference/v2/profiles/get-posts.md): Retrieve the posts published by a user, newest first.
+- [Send Message or Email](https://docs.linkupapi.com/api-reference/v2/messages/send.md): Send a LinkedIn message or InMail, or an email — from a connected account.
+- [List Inbox](https://docs.linkupapi.com/api-reference/v2/messages/list-inbox.md): Retrieve a list of conversations from the inbox.
+- [Get Conversation](https://docs.linkupapi.com/api-reference/v2/messages/get-conversation.md): Retrieve messages from a specific conversation.
+- [Download Attachment](https://docs.linkupapi.com/api-reference/v2/messages/download-attachment.md): Download the bytes of a message attachment.
+- [Balance](https://docs.linkupapi.com/api-reference/v2/messages/balance.md): Get an account's remaining premium messaging credits (InMail).
+- [Check Numbers](https://docs.linkupapi.com/api-reference/v2/messages/check-numbers.md): Check which phone numbers are on WhatsApp.
+- [Manage Emails](https://docs.linkupapi.com/api-reference/v2/messages/manage-emails.md): Mark read/unread, archive, trash, labels, drafts and attachment download for email mailboxes
+- [Send Connection Request](https://docs.linkupapi.com/api-reference/v2/network/invite.md): Send a connection request to a user.
+- [Accept Invitation](https://docs.linkupapi.com/api-reference/v2/network/accept.md): Accept or decline a pending connection invitation.
+- [Decline Invitation](https://docs.linkupapi.com/api-reference/v2/network/decline.md): Decline a pending connection invitation.
+- [List Connections](https://docs.linkupapi.com/api-reference/v2/network/list-connections.md): Retrieve a paginated list of connections.
+- [List Invitations](https://docs.linkupapi.com/api-reference/v2/network/list-invitations.md): Retrieve a paginated list of pending invitations received.
+- [List Sent Invitations](https://docs.linkupapi.com/api-reference/v2/network/list-sent.md): Retrieve a paginated list of sent invitations.
+- [Withdraw Invitation](https://docs.linkupapi.com/api-reference/v2/network/withdraw.md): Withdraw a pending sent connection invitation.
+- [Check Invitation Status](https://docs.linkupapi.com/api-reference/v2/network/check-invitation.md): Check the connection status with a specific user.
+- [Get Network Recommendations](https://docs.linkupapi.com/api-reference/v2/network/recommendations.md): Retrieve network recommendations (people you may know).
+- [Create Post](https://docs.linkupapi.com/api-reference/v2/content/create.md): Create a new post with text, images, video, a document, or carousel content.
+- [Create Company Post](https://docs.linkupapi.com/api-reference/v2/content/create-company.md): Create a new post on a company page.
+- [Get Post](https://docs.linkupapi.com/api-reference/v2/content/get.md): Retrieve a single post from its URL.
+- [Search Posts](https://docs.linkupapi.com/api-reference/v2/content/search.md): Search for posts using keywords and advanced filters.
+- [Get Feed](https://docs.linkupapi.com/api-reference/v2/content/get-feed.md): Retrieve the home feed of the authenticated account.
+- [React to Post](https://docs.linkupapi.com/api-reference/v2/content/react.md): React to a post with a specific reaction type.
+- [Comment on Post](https://docs.linkupapi.com/api-reference/v2/content/comment.md): Add a comment to a post.
+- [Reply to Comment](https://docs.linkupapi.com/api-reference/v2/content/answer-comment.md): Reply to a specific comment on a post.
+- [Repost](https://docs.linkupapi.com/api-reference/v2/content/repost.md): Repost a post to your feed.
+- [Get Post Comments](https://docs.linkupapi.com/api-reference/v2/content/get-comments.md): Retrieve comments on a specific post.
+- [Get Post Reactions](https://docs.linkupapi.com/api-reference/v2/content/get-reactions.md): Retrieve reactions on a specific post.
+- [Get Job Posts](https://docs.linkupapi.com/api-reference/v2/recruiter/get-posts.md): Retrieve job postings from your recruiter account.
+- [Get Job Candidates](https://docs.linkupapi.com/api-reference/v2/recruiter/get-candidates.md): Retrieve candidates who applied to a specific job posting.
+- [Get Candidate CV](https://docs.linkupapi.com/api-reference/v2/recruiter/get-cv.md): Retrieve the CV/resume of a specific job candidate.
+- [Create Job Posting](https://docs.linkupapi.com/api-reference/v2/recruiter/create-job.md): Create a job posting on LinkedIn (draft state).
+- [Close Job Posting](https://docs.linkupapi.com/api-reference/v2/recruiter/close-job.md): Close an active job posting.
+- [Publish Job Posting](https://docs.linkupapi.com/api-reference/v2/recruiter/publish-job.md): Publish a draft job posting.
+- [Projects](https://docs.linkupapi.com/api-reference/v2/recruiter/projects.md): Hiring projects of a LinkedIn Recruiter (Lite) seat: pipeline, stages and notes.
+- [Get Credit Balance](https://docs.linkupapi.com/api-reference/v2/credits/get-balance.md): Check your current credit balance
+- [List API Logs](https://docs.linkupapi.com/api-reference/v2/logs/list-logs.md): Browse your API call history, one entry per request
+- [Find Email](https://docs.linkupapi.com/api-reference/v2/enrich/find-email.md): Find a professional email address from name + company.
+- [Validate Email](https://docs.linkupapi.com/api-reference/v2/enrich/validate-email.md): Verify whether an email address is valid and deliverable.
+- [Reverse Email Lookup](https://docs.linkupapi.com/api-reference/v2/enrich/reverse-email.md): Identify a person from their professional email address.
+- [Webhooks Introduction](https://docs.linkupapi.com/api-reference/v2/webhooks/introduction.md): Receive real-time notifications for account activity
+- [Create Webhook](https://docs.linkupapi.com/api-reference/v2/webhooks/create.md): Register a webhook to receive real-time events for an account
+- [List Webhooks](https://docs.linkupapi.com/api-reference/v2/webhooks/list.md): List all webhooks for your account
+- [Update Webhook](https://docs.linkupapi.com/api-reference/v2/webhooks/update.md): Update a webhook configuration
+- [Delete Webhook](https://docs.linkupapi.com/api-reference/v2/webhooks/delete.md): Permanently delete a webhook
+- [Start Monitoring](https://docs.linkupapi.com/api-reference/v2/webhooks/start.md): Resume real-time monitoring for a stopped webhook
+- [Stop Monitoring](https://docs.linkupapi.com/api-reference/v2/webhooks/stop.md): Stop real-time monitoring for a webhook
+- [Signature Verification](https://docs.linkupapi.com/api-reference/v2/webhooks/signature.md): Verify that incoming webhook POSTs come from LinkUp
+- [Poll Events](https://docs.linkupapi.com/api-reference/v2/webhooks/events.md): Retrieve stored webhook events by polling — the catch-up path for hosted and custom webhooks
+- [Build a LinkedIn Campaign](https://docs.linkupapi.com/tutorials/linkedin-campaign.md): How to create automated LinkedIn outreach campaigns using the LinkupAPI
+- [Introduction](https://docs.linkupapi.com/api-reference/introduction.md): Connect your AI agent to LinkedIn, WhatsApp, and B2B live data
+- [Error Messages](https://docs.linkupapi.com/api-reference/linkup/Error_Messages/ErrorMessages.md): Complete guide of error messages and status codes
+- [Getting LinkedIn Authentication Token](https://docs.linkupapi.com/api-reference/linkedin-engagement-api/getting-linkedin-cookie.md): How to obtain the LinkedIn authentication token
+- [Login](https://docs.linkupapi.com/api-reference/linkup/authentication/login.md): Authenticate with LinkedIn credentials
+- [Verify Code](https://docs.linkupapi.com/api-reference/linkup/authentication/verify.md): Verify security code for LinkedIn authentication
+- [Get My Profile](https://docs.linkupapi.com/api-reference/linkup/Profile/me.md): Retrieve your own LinkedIn profile information
+- [Extract Profile Information](https://docs.linkupapi.com/api-reference/linkup/Profile/profile-info.md): Extract detailed information from a LinkedIn profile
+- [Visit Profile](https://docs.linkupapi.com/api-reference/linkup/Profile/visit.md): Visit a LinkedIn profile to appear in their profile viewers
+- [Search Profile](https://docs.linkupapi.com/api-reference/linkup/Profile/search.md): Search for LinkedIn profiles with advanced filters
+- [Search Companies](https://docs.linkupapi.com/api-reference/linkup/Companies/search.md): Search for companies on LinkedIn using various filters
+- [Get Company Information](https://docs.linkupapi.com/api-reference/linkup/Companies/company-info.md): Extract detailed information about a company from LinkedIn
+- [Send Connection Request](https://docs.linkupapi.com/api-reference/linkup/Network/connect.md): Send a connection request to a LinkedIn profile
+- [Get Connections](https://docs.linkupapi.com/api-reference/linkup/Network/get-connections.md): Retrieve your LinkedIn connections list with pagination support
+- [Accept Connection Invitation](https://docs.linkupapi.com/api-reference/linkup/Network/accept-invitations.md): Accept a pending LinkedIn connection invitation
+- [Get Received Invitations](https://docs.linkupapi.com/api-reference/linkup/Network/get-invitations.md): Retrieve your LinkedIn invitations with pagination support
+- [Get Sent Invitations](https://docs.linkupapi.com/api-reference/linkup/Network/get-sent-invitations.md): Retrieve LinkedIn connection invitations you have sent with pagination and filtering
+- [Withdraw Invitation](https://docs.linkupapi.com/api-reference/linkup/Network/withdraw-invitation.md): Withdraw a sent LinkedIn connection invitation
+- [Get Network Recommendations](https://docs.linkupapi.com/api-reference/linkup/Network/get-network-recomandations.md): Retrieve LinkedIn network recommendations of people you may know, with optional pagination support
+- [Get Invitation Status](https://docs.linkupapi.com/api-reference/linkup/Network/get_invitations_status.md): Check the status of connection and invitation with a LinkedIn profile
+- [Send Message](https://docs.linkupapi.com/api-reference/linkup/Messages/send.md): Send a message to a LinkedIn user
+- [Get Message Inbox](https://docs.linkupapi.com/api-reference/linkup/Messages/inbox-conversations.md): Retrieve LinkedIn messaging conversations
+- [Get Conversation Messages](https://docs.linkupapi.com/api-reference/linkup/Messages/conversation.md): Retrieve messages from a specific LinkedIn conversation
+- [Get Post Reactions](https://docs.linkupapi.com/api-reference/linkup/posts/get-reactions.md): Retrieve reactions (likes, etc.) on a specific LinkedIn post
+- [React to Post](https://docs.linkupapi.com/api-reference/linkup/posts/like.md): Add a reaction to a LinkedIn post with different reaction types
+- [Repost Content](https://docs.linkupapi.com/api-reference/linkup/posts/repost.md): Share an existing LinkedIn post on your profile
+- [Add Comment to Post](https://docs.linkupapi.com/api-reference/linkup/posts/comment.md): Add a comment to a LinkedIn post
+- [Get Comments](https://docs.linkupapi.com/api-reference/linkup/posts/get-comments.md): Retrieve comments on a specific LinkedIn post
+- [Answer Comment](https://docs.linkupapi.com/api-reference/linkup/posts/answercomment.md): Reply to a comment on a LinkedIn post
+- [Search Posts](https://docs.linkupapi.com/api-reference/linkup/posts/search.md): Extract and search LinkedIn posts with various filters
+- [Create Post](https://docs.linkupapi.com/api-reference/linkup/posts/create.md): Create a new LinkedIn post with optional image attachment
+- [Create Company Post](https://docs.linkupapi.com/api-reference/linkup/posts/create-company.md): Create a new LinkedIn post on behalf of a company with optional media attachments
+- [Get LinkedIn Feed](https://docs.linkupapi.com/api-reference/linkup/posts/get-feed.md): Retrieve posts from LinkedIn feed with automatic pagination
+- [Get Candidates](https://docs.linkupapi.com/api-reference/linkup/recruiter/get-candidate.md): Retrieve applicants for a LinkedIn job posting
+- [Get Candidate CV](https://docs.linkupapi.com/api-reference/linkup/recruiter/get-cv.md): Retrieve a candidate's CV document from a LinkedIn job application
+- [Get Job Posts](https://docs.linkupapi.com/api-reference/linkup/recruiter/get-posts.md): Retrieve your posted LinkedIn job listings with basic or complete details
+- [Publish Job](https://docs.linkupapi.com/api-reference/linkup/recruiter/publish-job.md): Publish an existing job posting on LinkedIn
+- [Close Job](https://docs.linkupapi.com/api-reference/linkup/recruiter/close-job-offer.md): Close an active job posting on LinkedIn
+- [Create Job](https://docs.linkupapi.com/api-reference/linkup/recruiter/create-job-post.md): Create a new job posting on LinkedIn
+- [Send Message](https://docs.linkupapi.com/api-reference/whatsapp-engagement-api/send-message.md): Send a message to a WhatsApp user
+- [Search Funded Companies](https://docs.linkupapi.com/api-reference/web-crawler-api/source-funding-company.md): Search funded company pages with advanced filters
+- [Source Hiring Companies](https://docs.linkupapi.com/api-reference/web-crawler-api/source-hiring-company.md): Search for companies actively hiring by scraping job boards (Indeed and LinkedIn)
+- [Get All Company Jobs](https://docs.linkupapi.com/api-reference/web-crawler-api/company-jobs.md): Extract ALL job postings from specific companies on LinkedIn (up to 2000 jobs per company)
+- [Search Companies](https://docs.linkupapi.com/api-reference/web-crawler-api/source-company.md): Search company pages with advanced filters
+- [Get Company Information](https://docs.linkupapi.com/api-reference/web-crawler-api/company-info.md): Extract detailed information about a company from LinkedIn.
+- [Get Company Information by Domain](https://docs.linkupapi.com/api-reference/web-crawler-api/company-info-by-domain.md): Search and extract company information from LinkedIn using a domain name
+- [Search Profiles](https://docs.linkupapi.com/api-reference/web-crawler-api/source-profile.md): Search LinkedIn profiles with multiple criteria
+- [Profile Enrichment](https://docs.linkupapi.com/api-reference/web-crawler-api/profile-enrichment.md): Find and extract comprehensive profile information using name and company
+- [Email Finder](https://docs.linkupapi.com/api-reference/data-api/mail-api/mail-finder.md): Find email address from LinkedIn profile URL
+- [Email Reverse Lookup](https://docs.linkupapi.com/api-reference/data-api/mail-api/mail-reverse.md): Find LinkedIn profile information from an email address
+- [Email Validation](https://docs.linkupapi.com/api-reference/data-api/mail-api/mail-validate.md): Validate if an email address is valid and deliverable
+- [Webhook API Introduction](https://docs.linkupapi.com/api-reference/webhook-realtime/introduction.md): Real-time notifications for LinkedIn and WhatsApp
+- [WhatsApp QR Authentication](https://docs.linkupapi.com/api-reference/webhook-realtime/whatsapp-authentication.md): Authenticate WhatsApp accounts using QR code
+- [Create Webhook Account](https://docs.linkupapi.com/api-reference/webhook-realtime/create_account.md): Register a LinkedIn or WhatsApp account for webhook monitoring
+- [List Webhook Accounts](https://docs.linkupapi.com/api-reference/webhook-realtime/list_account.md): Retrieve all registered webhook accounts
+- [Update Webhook Account](https://docs.linkupapi.com/api-reference/webhook-realtime/update_account.md): Update an existing webhook account
+- [Delete Webhook Account](https://docs.linkupapi.com/api-reference/webhook-realtime/delete_account.md): Delete a webhook account
+- [Start Webhook Monitoring](https://docs.linkupapi.com/api-reference/webhook-realtime/start_monitoring.md): Start real-time monitoring for a LinkedIn account
+- [Stop Webhook Monitoring](https://docs.linkupapi.com/api-reference/webhook-realtime/stop_monitoring.md): Stop real-time monitoring for a LinkedIn account
+- [Check Monitoring Status](https://docs.linkupapi.com/api-reference/webhook-realtime/monitoring_status.md): Check the current monitoring status of a webhook account
+- [Introduction](https://docs.linkupapi.com/api-reference/introduction.md): Connect your AI agent to LinkedIn, WhatsApp, and B2B live data
+- [Error Messages](https://docs.linkupapi.com/api-reference/linkup/Error_Messages/ErrorMessages.md): Complete guide of error messages and status codes
+- [Getting LinkedIn Authentication Token](https://docs.linkupapi.com/api-reference/linkedin-engagement-api/getting-linkedin-cookie.md): How to obtain the LinkedIn authentication token
+- [Login](https://docs.linkupapi.com/api-reference/linkup/authentication/login.md): Authenticate with LinkedIn credentials
+- [Verify Code](https://docs.linkupapi.com/api-reference/linkup/authentication/verify.md): Verify security code for LinkedIn authentication
+- [Get My Profile](https://docs.linkupapi.com/api-reference/linkup/Profile/me.md): Retrieve your own LinkedIn profile information
+- [Extract Profile Information](https://docs.linkupapi.com/api-reference/linkup/Profile/profile-info.md): Extract detailed information from a LinkedIn profile
+- [Search Profile](https://docs.linkupapi.com/api-reference/linkup/Profile/search.md): Search for LinkedIn profiles with advanced filters
+- [Search Companies](https://docs.linkupapi.com/api-reference/linkup/Companies/search.md): Search for companies on LinkedIn using various filters
+- [Get Company Information](https://docs.linkupapi.com/api-reference/linkup/Companies/company-info.md): Extract detailed information about a company from LinkedIn
+- [Send Connection Request](https://docs.linkupapi.com/api-reference/linkup/Network/connect.md): Send a connection request to a LinkedIn profile
+- [Get Connections](https://docs.linkupapi.com/api-reference/linkup/Network/get-connections.md): Retrieve your LinkedIn connections list with pagination support
+- [Accept Connection Invitation](https://docs.linkupapi.com/api-reference/linkup/Network/accept-invitations.md): Accept a pending LinkedIn connection invitation
+- [Get Received Invitations](https://docs.linkupapi.com/api-reference/linkup/Network/get-invitations.md): Retrieve your LinkedIn invitations with pagination support
+- [Get Sent Invitations](https://docs.linkupapi.com/api-reference/linkup/Network/get-sent-invitations.md): Retrieve LinkedIn connection invitations you have sent with pagination and filtering
+- [Withdraw Invitation](https://docs.linkupapi.com/api-reference/linkup/Network/withdraw-invitation.md): Withdraw a sent LinkedIn connection invitation
+- [Get Network Recommendations](https://docs.linkupapi.com/api-reference/linkup/Network/get-network-recomandations.md): Retrieve LinkedIn network recommendations of people you may know, with optional pagination support
+- [Get Invitation Status](https://docs.linkupapi.com/api-reference/linkup/Network/get_invitations_status.md): Check the status of connection and invitation with a LinkedIn profile
+- [Send Message](https://docs.linkupapi.com/api-reference/linkup/Messages/send.md): Send a message to a LinkedIn user
+- [Get Message Inbox](https://docs.linkupapi.com/api-reference/linkup/Messages/inbox-conversations.md): Retrieve LinkedIn messaging conversations
+- [Get Conversation Messages](https://docs.linkupapi.com/api-reference/linkup/Messages/conversation.md): Retrieve messages from a specific LinkedIn conversation
+- [Get Post Reactions](https://docs.linkupapi.com/api-reference/linkup/posts/get-reactions.md): Retrieve reactions (likes, etc.) on a specific LinkedIn post
+- [React to Post](https://docs.linkupapi.com/api-reference/linkup/posts/like.md): Add a reaction to a LinkedIn post with different reaction types
+- [Repost Content](https://docs.linkupapi.com/api-reference/linkup/posts/repost.md): Share an existing LinkedIn post on your profile
+- [Add Comment to Post](https://docs.linkupapi.com/api-reference/linkup/posts/comment.md): Add a comment to a LinkedIn post
+- [Get Comments](https://docs.linkupapi.com/api-reference/linkup/posts/get-comments.md): Retrieve comments on a specific LinkedIn post
+- [Answer Comment](https://docs.linkupapi.com/api-reference/linkup/posts/answercomment.md): Reply to a comment on a LinkedIn post
+- [Search Posts](https://docs.linkupapi.com/api-reference/linkup/posts/search.md): Extract and search LinkedIn posts with various filters
+- [Create Post](https://docs.linkupapi.com/api-reference/linkup/posts/create.md): Create a new LinkedIn post with optional image attachment
+- [Create Company Post](https://docs.linkupapi.com/api-reference/linkup/posts/create-company.md): Create a new LinkedIn post on behalf of a company with optional media attachments
+- [Get LinkedIn Feed](https://docs.linkupapi.com/api-reference/linkup/posts/get-feed.md): Retrieve posts from LinkedIn feed with automatic pagination
+- [Send Post Time Spent Signal](https://docs.linkupapi.com/api-reference/linkup/posts/time-spent.md): Send time spent signal for a LinkedIn post to track engagement duration
+- [Get Candidates](https://docs.linkupapi.com/api-reference/linkup/recruiter/get-candidate.md): Retrieve applicants for a LinkedIn job posting
+- [Get Candidate CV](https://docs.linkupapi.com/api-reference/linkup/recruiter/get-cv.md): Retrieve a candidate's CV document from a LinkedIn job application
+- [Get Job Posts](https://docs.linkupapi.com/api-reference/linkup/recruiter/get-posts.md): Retrieve your posted LinkedIn job listings with basic or complete details
+- [Publish Job](https://docs.linkupapi.com/api-reference/linkup/recruiter/publish-job.md): Publish an existing job posting on LinkedIn
+- [Close Job](https://docs.linkupapi.com/api-reference/linkup/recruiter/close-job-offer.md): Close an active job posting on LinkedIn
+- [Create Job](https://docs.linkupapi.com/api-reference/linkup/recruiter/create-job-post.md): Create a new job posting on LinkedIn
+- [Extract Post Reactions](https://docs.linkupapi.com/api-reference/data-api/signal-api/posts-reactions.md): Extract reactions (likes, etc.) from a specific LinkedIn post
+- [Extract Post Comments](https://docs.linkupapi.com/api-reference/data-api/signal-api/posts-comments.md): Extract comments from a specific LinkedIn post
+- [Extract Profile Reactions](https://docs.linkupapi.com/api-reference/data-api/signal-api/profile-reactions.md): Extract reactions from a LinkedIn profile (posts that the person has liked/reacted to)
+- [Extract Profile Comments](https://docs.linkupapi.com/api-reference/data-api/signal-api/profile-comments.md): Extract comments from a LinkedIn profile (comments that the person has posted)
+- [Extract Profile Posts](https://docs.linkupapi.com/api-reference/data-api/signal-api/profile-posts.md): Extract posts from a LinkedIn profile
+- [Extract Company Posts](https://docs.linkupapi.com/api-reference/data-api/signal-api/company-posts.md): Extract posts from a LinkedIn company page
+- [Search Companies](https://docs.linkupapi.com/api-reference/data-api/company-api/companies-search.md): Search LinkedIn company pages with advanced filters
+- [Get Company Information](https://docs.linkupapi.com/api-reference/data-api/company-api/company-info-direct.md): Extract detailed information about a company from LinkedIn.
+- [Get Company Information by Domain](https://docs.linkupapi.com/api-reference/data-api/company-api/company-info-by-domain.md): Search and extract company information from LinkedIn using a domain name
+- [Search Profiles](https://docs.linkupapi.com/api-reference/data-api/person-api/profiles-search.md): Search LinkedIn profiles with multiple criteria
+- [Extract Profile Information](https://docs.linkupapi.com/api-reference/data-api/person-api/profile-info-direct.md): Extract detailed information from a LinkedIn profile
+- [Profile Enrichment](https://docs.linkupapi.com/api-reference/data-api/person-api/profile-enrich.md): Find and extract comprehensive profile information using name and company
+- [Email Finder](https://docs.linkupapi.com/api-reference/data-api/mail-api/mail-finder.md): Find email address from LinkedIn profile URL
+- [Email Reverse Lookup](https://docs.linkupapi.com/api-reference/data-api/mail-api/mail-reverse.md): Find LinkedIn profile information from an email address
+- [Email Validation](https://docs.linkupapi.com/api-reference/data-api/mail-api/mail-validate.md): Validate if an email address is valid and deliverable
+
+## OpenAPI Specs
+
+- [openapi](/openapi.json)
+
+
+This documentation is built and hosted on [Mintlify](https://mintlify.com), a developer documentation platform.

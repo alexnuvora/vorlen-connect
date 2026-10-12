@@ -20,8 +20,10 @@ import uuid
 from datetime import datetime, timezone
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+import native_linkedin
+import native_mail
 
-VERSION = 'session-broker-1.0.0'
+VERSION = 'session-broker-1.1.0'
 API = 'https://connect.vorlen.co.uk/api/session-worker'
 ROOT = Path(os.environ.get('VORLEN_SESSION_STATE_DIR', '/var/lib/vorlen-session'))
 STOP = False
@@ -168,6 +170,8 @@ class LinkedInBrowser:
 
     def open(self, owner, connection, fresh=False):
         scope = (owner, connection)
+        if not fresh:
+            self.vault.load(owner,connection)
         if not fresh and self.scope == scope and self.browser and self.browser.is_connected():
             self.last_use = time.time()
             return
@@ -272,16 +276,26 @@ class LinkedInBrowser:
                 self.page.locator('button[type="submit"]').first.click()
                 self.page.wait_for_timeout(2000)
             return self.login_result()
+        if op in ('connect_mail','emails','send_email'):
+            return native_mail.run(self.vault,job,BrokerError)
         self.open(owner, cid)
         # Persisted sessions can expire or be revoked remotely at any time.
         own = profile(self.request('/me')[0])
-        if op == 'profile':
-            return {'ok': True, 'data': profile(self.request('/identity/profiles/' + quote(p['identifier'], safe='') + '/profileView')[0]) if p.get('identifier') else own}
+        if op == 'profile' and not p.get('identifier'):
+            return {'ok': True, 'data': own}
+        if op in ('profile','contact','company','search_companies','search_people','network_status','sent_invitations','feed','post_comments'):
+            return {'ok':True,'data':native_linkedin.read(self,op,p,BrokerError)}
         paging = {'start': p.get('start', 0), 'count': p.get('count', 10)}
         if op == 'inbox':
-            data = self.request('/messaging/conversations', {'keyVersion': 'LEGACY_INBOX', **paging})[0]
+            params={'keyVersion':'LEGACY_INBOX',**paging}
+            if p.get('category')=='UNREAD':params['q']='unread'
+            data = self.request('/messaging/conversations', params)[0]
         elif op == 'conversation':
-            conversation = p['conversation_id'].split(':')[-1]
+            conversation=p.get('conversation_id')
+            if not conversation:
+                _,conversation=native_linkedin.find_conversation(self,p['identifier'],BrokerError)
+                if not conversation:return {'ok':True,'data':{'items':[],'conversation_exists':False}}
+            conversation=conversation.split(':')[-1]
             data = self.request('/messaging/conversations/' + quote(conversation, safe='') + '/events', paging)[0]
         elif op == 'invitations':
             data = self.request('/relationships/invitationViews', {'q': 'receivedInvitation', 'includeInsights': 'true', **paging})[0]
@@ -307,11 +321,17 @@ class LinkedInBrowser:
             event = {'eventCreate': {'originToken': job['id'], 'value': {'com.linkedin.voyager.messaging.create.MessageCreate':
                 {'attributedBody': {'text': p['content'], 'attributes': []}, 'attachments': []}},
                 'trackingId': base64.b64encode(os.urandom(16)).decode()}, 'dedupeByClientGeneratedToken': True}
-            response, status = self.request('/messaging/conversations/' + quote(p['conversation_id'].split(':')[-1], safe='') + '/events',
-                                            {'action': 'create'}, 'POST', event)
+            conversation=p.get('conversation_id')
+            member=None
+            if p.get('identifier'):member,conversation=native_linkedin.find_conversation(self,p['identifier'],BrokerError)
+            if conversation:
+                response,status=self.request('/messaging/conversations/'+quote(conversation.split(':')[-1],safe='')+'/events',{'action':'create'},'POST',event)
+            else:
+                event.update({'recipients':[member],'subtype':'MEMBER_TO_MEMBER'})
+                response,status=self.request('/messaging/conversations',{'action':'create'},'POST',{'keyVersion':'LEGACY_INBOX','conversationCreate':event})
             if status != 201:
                 raise BrokerError('PUBLICATION_UNCONFIRMED')
-            return {'ok': True, 'data': {'sent': True, 'conversation_id': p['conversation_id'],
+            return {'ok': True, 'data': {'sent': True, 'conversation_id': conversation,
                 'provider_id': str(response.get('entityUrn') or response.get('value', {}).get('entityUrn') or '')[:300]}}
         elif op == 'send_invitation':
             recipient = profile(self.request('/identity/profiles/' + quote(p['identifier'], safe='') + '/profileView')[0])
@@ -327,7 +347,7 @@ class LinkedInBrowser:
             return {'ok': True, 'data': {'sent': True, 'recipient': recipient}}
         else:
             raise BrokerError('UNSUPPORTED_OPERATION')
-        return {'ok': True, 'data': clean_records(data, paging['count'])}
+        return {'ok': True, 'data': native_linkedin.collection(data,paging['count'],BrokerError)}
 
 
 def stop(*_):
@@ -338,6 +358,7 @@ def stop(*_):
 def main():
     from playwright.sync_api import sync_playwright
     os.umask(0o077)
+    signal.signal(signal.SIGALRM, lambda *_: (_ for _ in ()).throw(BrokerError('JOB_DEADLINE_EXCEEDED')))
     signal.signal(signal.SIGTERM, stop)
     signal.signal(signal.SIGINT, stop)
     vault = Vault(ROOT)
@@ -351,6 +372,7 @@ def main():
                 for job in data.get('rows', [])[:1]:
                     vault.prune(job['owner_id'], data.get('connections', []))
                     try:
+                        signal.alarm(120)
                         result = browser.run(job)
                     except BrokerError as exc:
                         result = {'ok': False, 'error_code': exc.code}
@@ -361,7 +383,11 @@ def main():
                         # Never log exception text: Playwright errors can contain inputs.
                         result = {'ok': False, 'error_code': 'BROWSER_OPERATION_FAILED'}
                         browser.close()
+                    finally:
+                        signal.alarm(0)
                     job['input'] = {}
+                    if len(json.dumps(result,ensure_ascii=False).encode())>220000:
+                        result={'ok':False,'error_code':'RESPONSE_TOO_LARGE'}
                     # Retry completion transport only, never the account action.
                     for attempt in range(3):
                         try:

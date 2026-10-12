@@ -31,7 +31,7 @@ if ! swapon --show=NAME --noheadings | grep -q .; then
   fi
 fi
 sudo install -d -m 755 /opt/vorlen-session
-sudo install -m 644 /tmp/vorlen-session-release/session_worker.py /opt/vorlen-session/session_worker.py
+sudo install -m 644 /tmp/vorlen-session-release/session_worker.py /tmp/vorlen-session-release/native_linkedin.py /tmp/vorlen-session-release/native_mail.py /opt/vorlen-session/
 sudo install -m 644 /tmp/vorlen-session-release/browser-smoke.py /opt/vorlen-session/browser-smoke.py
 sudo install -m 644 /tmp/vorlen-session-release/vorlen-session.service /etc/systemd/system/vorlen-session.service
 echo 'Installing session service'

@@ -18,7 +18,7 @@ async function handler(req:Request){
   await svc.rate('api',90);
   if(['enqueue','job','jobs','approve','cancel','disconnect','health'].includes(body?.action)){const {action,...args}=body;return reply({success:true,data:await brokerAction(svc,action,args)});}
   if(body?.action==='create' && typeof body.label==='string' && body.label.trim().length>=1 && body.label.length<=100){
-   const r=await svc.db.rpc('session_manage',{action:'create',label:body.label.trim()});
+   const r=await svc.db.rpc('session_manage',{action:'create',label:body.label.trim(),channel:body.channel==='email'?'email':'linkedin'});
    return reply({success:true,data:r.rows[0]},201);
   }
   if(body?.action==='revoke' && typeof body.id==='string' && /^[a-f0-9-]{36}$/i.test(body.id)){

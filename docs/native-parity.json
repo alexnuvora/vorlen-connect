@@ -1,0 +1,287 @@
+{
+  "reviewed_at": "2026-10-12",
+  "scope": "40 actions exposed by the connected LinkupAPI plugin; broader public API separately inventoried",
+  "parity_complete": false,
+  "operations": [
+    {
+      "id": "profiles.get_me",
+      "implementation": "adapter",
+      "limitation": "Requires live account verification; bounded pagination.",
+      "live_verified": false,
+      "live_evidence": null
+    },
+    {
+      "id": "profiles.get",
+      "implementation": "adapter",
+      "limitation": "Requires live account verification; bounded pagination.",
+      "live_verified": false,
+      "live_evidence": null
+    },
+    {
+      "id": "profiles.get_contact",
+      "implementation": "adapter",
+      "limitation": "Requires live account verification; bounded pagination.",
+      "live_verified": false,
+      "live_evidence": null
+    },
+    {
+      "id": "profiles.search_people",
+      "implementation": "adapter",
+      "limitation": "Keyword, first/last name, title, company, school, geography, industry and network filters; entity filters require LinkedIn numeric IDs. Maximum 25 results per job.",
+      "live_verified": false,
+      "live_evidence": null
+    },
+    {
+      "id": "profiles.search_companies",
+      "implementation": "adapter",
+      "limitation": "Keyword, geography, sector and size filters; geography/sector require LinkedIn numeric IDs. Maximum 25 results per job.",
+      "live_verified": false,
+      "live_evidence": null
+    },
+    {
+      "id": "profiles.get_company",
+      "implementation": "adapter",
+      "limitation": "Requires live account verification; bounded pagination.",
+      "live_verified": false,
+      "live_evidence": null
+    },
+    {
+      "id": "profiles.get_candidates",
+      "implementation": "blocked",
+      "limitation": "Native adapter and live provider fixtures still required. No paid-provider fallback.",
+      "live_verified": false,
+      "live_evidence": null
+    },
+    {
+      "id": "profiles.get_viewers",
+      "implementation": "blocked",
+      "limitation": "Native adapter and live provider fixtures still required. No paid-provider fallback.",
+      "live_verified": false,
+      "live_evidence": null
+    },
+    {
+      "id": "profiles.get_reactions",
+      "implementation": "blocked",
+      "limitation": "Native adapter and live provider fixtures still required. No paid-provider fallback.",
+      "live_verified": false,
+      "live_evidence": null
+    },
+    {
+      "id": "profiles.get_comments",
+      "implementation": "blocked",
+      "limitation": "Native adapter and live provider fixtures still required. No paid-provider fallback.",
+      "live_verified": false,
+      "live_evidence": null
+    },
+    {
+      "id": "network.list_connections",
+      "implementation": "adapter",
+      "limitation": "Requires live account verification; bounded pagination.",
+      "live_verified": false,
+      "live_evidence": null
+    },
+    {
+      "id": "network.list_invitations",
+      "implementation": "adapter",
+      "limitation": "Requires live account verification; bounded pagination.",
+      "live_verified": false,
+      "live_evidence": null
+    },
+    {
+      "id": "network.list_sent",
+      "implementation": "adapter",
+      "limitation": "Requires live account verification; bounded pagination.",
+      "live_verified": false,
+      "live_evidence": null
+    },
+    {
+      "id": "network.check_invitation",
+      "implementation": "adapter",
+      "limitation": "Returns explicit provider relationship state; never infers no invitation from an empty list.",
+      "live_verified": false,
+      "live_evidence": null
+    },
+    {
+      "id": "network.recommendations",
+      "implementation": "blocked",
+      "limitation": "Native adapter and live provider fixtures still required. No paid-provider fallback.",
+      "live_verified": false,
+      "live_evidence": null
+    },
+    {
+      "id": "recruiter.get_posts",
+      "implementation": "blocked",
+      "limitation": "Native adapter and live provider fixtures still required. No paid-provider fallback.",
+      "live_verified": false,
+      "live_evidence": null
+    },
+    {
+      "id": "recruiter.get_candidates",
+      "implementation": "blocked",
+      "limitation": "Native adapter and live provider fixtures still required. No paid-provider fallback.",
+      "live_verified": false,
+      "live_evidence": null
+    },
+    {
+      "id": "recruiter.get_cv",
+      "implementation": "blocked",
+      "limitation": "Native adapter and live provider fixtures still required. No paid-provider fallback.",
+      "live_verified": false,
+      "live_evidence": null
+    },
+    {
+      "id": "content.search",
+      "implementation": "blocked",
+      "limitation": "Native adapter and live provider fixtures still required. No paid-provider fallback.",
+      "live_verified": false,
+      "live_evidence": null
+    },
+    {
+      "id": "content.get_feed",
+      "implementation": "adapter",
+      "limitation": "Requires live account verification; bounded pagination.",
+      "live_verified": false,
+      "live_evidence": null
+    },
+    {
+      "id": "content.get_comments",
+      "implementation": "adapter",
+      "limitation": "Requires live account verification; bounded pagination.",
+      "live_verified": false,
+      "live_evidence": null
+    },
+    {
+      "id": "content.get_reactions",
+      "implementation": "blocked",
+      "limitation": "Native adapter and live provider fixtures still required. No paid-provider fallback.",
+      "live_verified": false,
+      "live_evidence": null
+    },
+    {
+      "id": "enrich.enrich_person",
+      "implementation": "blocked",
+      "limitation": "Native adapter and live provider fixtures still required. No paid-provider fallback.",
+      "live_verified": false,
+      "live_evidence": null
+    },
+    {
+      "id": "enrich.enrich_company",
+      "implementation": "blocked",
+      "limitation": "Native adapter and live provider fixtures still required. No paid-provider fallback.",
+      "live_verified": false,
+      "live_evidence": null
+    },
+    {
+      "id": "enrich.find_email",
+      "implementation": "blocked",
+      "limitation": "Native adapter and live provider fixtures still required. No paid-provider fallback.",
+      "live_verified": false,
+      "live_evidence": null
+    },
+    {
+      "id": "enrich.validate_email",
+      "implementation": "blocked",
+      "limitation": "Native adapter and live provider fixtures still required. No paid-provider fallback.",
+      "live_verified": false,
+      "live_evidence": null
+    },
+    {
+      "id": "enrich.reverse_email",
+      "implementation": "blocked",
+      "limitation": "Native adapter and live provider fixtures still required. No paid-provider fallback.",
+      "live_verified": false,
+      "live_evidence": null
+    },
+    {
+      "id": "enrich.search_jobs",
+      "implementation": "blocked",
+      "limitation": "Native adapter and live provider fixtures still required. No paid-provider fallback.",
+      "live_verified": false,
+      "live_evidence": null
+    },
+    {
+      "id": "enrich.extract_employees",
+      "implementation": "blocked",
+      "limitation": "Native adapter and live provider fixtures still required. No paid-provider fallback.",
+      "live_verified": false,
+      "live_evidence": null
+    },
+    {
+      "id": "messages.list",
+      "implementation": "adapter",
+      "limitation": "INBOX and UNREAD only. Other categories require a verified provider adapter.",
+      "live_verified": false,
+      "live_evidence": null
+    },
+    {
+      "id": "conversation.get",
+      "implementation": "adapter",
+      "limitation": "Requires live account verification; bounded pagination.",
+      "live_verified": false,
+      "live_evidence": null
+    },
+    {
+      "id": "emails.list",
+      "implementation": "adapter",
+      "limitation": "TLS IMAP inbox using app passwords; OAuth-only mailboxes require a separate OAuth integration.",
+      "live_verified": false,
+      "live_evidence": null
+    },
+    {
+      "id": "send_connection.send",
+      "implementation": "adapter",
+      "limitation": "Invitation note limited to 200 characters until account-specific limits are verified.",
+      "live_verified": false,
+      "live_evidence": null
+    },
+    {
+      "id": "send_message.send",
+      "implementation": "adapter",
+      "limitation": "Text, existing conversations or profile recipients. Attachments still require a verified upload adapter.",
+      "live_verified": false,
+      "live_evidence": null
+    },
+    {
+      "id": "send_email.send",
+      "implementation": "adapter",
+      "limitation": "TLS SMTP, text/HTML and Reply-To. App-password authentication; no provider OAuth yet.",
+      "live_verified": false,
+      "live_evidence": null
+    },
+    {
+      "id": "accounts.list",
+      "implementation": "implemented",
+      "limitation": null,
+      "live_verified": false,
+      "live_evidence": null
+    },
+    {
+      "id": "account.get",
+      "implementation": "implemented",
+      "limitation": null,
+      "live_verified": false,
+      "live_evidence": null
+    },
+    {
+      "id": "credits.get",
+      "implementation": "implemented",
+      "limitation": "No Vorlen credits or paid auto-purchases; reports the native free-only operating policy.",
+      "live_verified": false,
+      "live_evidence": null
+    },
+    {
+      "id": "logs.list",
+      "implementation": "implemented",
+      "limitation": null,
+      "live_verified": false,
+      "live_evidence": null
+    },
+    {
+      "id": "usage.get",
+      "implementation": "implemented",
+      "limitation": null,
+      "live_verified": false,
+      "live_evidence": null
+    }
+  ]
+}
