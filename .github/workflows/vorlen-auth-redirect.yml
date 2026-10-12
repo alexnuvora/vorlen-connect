@@ -1,0 +1,45 @@
+name: Configure Vorlen Connect Auth redirect
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/vorlen-auth-redirect.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  configure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.VORLEN_CONNECT_SUPABASE_ACCESS_TOKEN }}
+    steps:
+      - name: Preserve existing Auth redirects and allow production recovery
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          const token=process.env.SUPABASE_ACCESS_TOKEN;
+          if(!token)throw new Error('Missing protected Supabase management secret');
+          const ref='oulypjxpbrlxbjrxzryf';
+          const endpoint='https://api.supabase.com/v1/projects/'+ref+'/config/auth';
+          const headers={Authorization:'Bearer '+token,'Content-Type':'application/json'};
+          const response=await fetch(endpoint,{headers});
+          if(!response.ok)throw new Error('Could not inspect Vorlen Connect Auth configuration: HTTP '+response.status);
+          const config=await response.json();
+          const required='https://connect.vorlen.co.uk/reset-password/confirm';
+          const existing=String(config.uri_allow_list||'').split(',').map(s=>s.trim()).filter(Boolean);
+          const unique=[...new Set([...existing,required])];
+          const next={};
+          if(!existing.includes(required))next.uri_allow_list=unique.join(',');
+          if(config.site_url!=='https://connect.vorlen.co.uk')next.site_url='https://connect.vorlen.co.uk';
+          if(Object.keys(next).length){
+            const updated=await fetch(endpoint,{method:'PATCH',headers,body:JSON.stringify(next)});
+            if(!updated.ok)throw new Error('Could not update Vorlen Connect Auth redirect configuration: HTTP '+updated.status);
+          }
+          const verify=await fetch(endpoint,{headers});
+          if(!verify.ok)throw new Error('Could not verify Auth redirect configuration');
+          const result=await verify.json();
+          const allowed=String(result.uri_allow_list||'').split(',').map(s=>s.trim());
+          if(!allowed.includes(required)||result.site_url!=='https://connect.vorlen.co.uk')throw new Error('Auth redirect verification failed');
+          console.log('Verified production Auth site URL and password recovery destination. Existing allowlisted URLs preserved.');
+          NODE
