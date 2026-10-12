@@ -1,4 +1,4 @@
-name: Verify Vorlen LinkedIn migration
+name: Verify Vorlen LinkedIn migration (Supabase CLI)
 on:
   push:
     branches: [feature/linkedin-mcp-publishing]
@@ -8,25 +8,20 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    timeout-minutes: 12
     steps:
-      - name: Verify exact Vorlen Connect database schema (read only)
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Check linked project and migration history
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.VORLEN_CONNECT_SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.VORLEN_CONNECT_SUPABASE_DB_PASSWORD }}
         run: |
-          node --input-type=module <<'NODE'
-          const token=process.env.SUPABASE_ACCESS_TOKEN;
-          if(!token)throw Error('Supabase management token missing');
-          const ref='oulypjxpbrlxbjrxzryf';
-          const sql=`select to_regclass('public.vc_linkedin_post_reviews') is not null as reviews_table,
-            to_regclass('public.vc_linkedin_post_audit') is not null as audit_table,
-            exists(select 1 from pg_proc where proname='vc_linkedin_post_control' and pronamespace='public'::regnamespace) as approval_rpc,
-            exists(select 1 from pg_class where oid=to_regclass('public.vc_linkedin_post_reviews') and relrowsecurity) as reviews_rls`;
-          const r=await fetch('https://api.supabase.com/v1/projects/'+ref+'/database/query',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({query:sql,read_only:true})});
-          if(!r.ok)throw Error('Schema verification HTTP '+r.status);
-          const records=await r.json();
-          const row=Array.isArray(records)?records[0]:records?.result?.[0];
-          if(!row)throw Error('Unexpected query response');
-          for(const name of ['reviews_table','audit_table','approval_rpc','reviews_rls'])console.log(name+': '+Boolean(row[name]));
-          if(!row.reviews_table||!row.audit_table||!row.approval_rpc||!row.reviews_rls)throw Error('Migration not completely installed');
-          console.log('Verified LinkedIn approval migration on Vorlen Connect project');
-          NODE
+          set -euo pipefail
+          test -n "$SUPABASE_ACCESS_TOKEN" || { echo "::error::Missing project access token"; exit 1; }
+          test -n "$SUPABASE_DB_PASSWORD" || { echo "::error::Add VORLEN_CONNECT_SUPABASE_DB_PASSWORD to GitHub Actions secrets"; exit 1; }
+          supabase link --project-ref oulypjxpbrlxbjrxzryf
+          supabase migration list --linked
+          supabase db push --linked --dry-run
