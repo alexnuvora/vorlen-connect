@@ -1,0 +1,32 @@
+name: Verify Oracle Chromium Runtime
+on:
+  push:
+    branches: [feature/interactive-browser-broker]
+    paths: ['.github/workflows/verify-oracle-chromium.yml']
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify browser can start headlessly
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VORLEN_WORKER_SSH_PRIVATE_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          KEY="$(mktemp)"
+          trap 'rm -f "$KEY"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$KEY"
+          ssh -i "$KEY" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=12 ubuntu@145.241.230.145 'bash -s' <<'REMOTE'
+          set -uo pipefail
+          echo "SNAP CONNECTIONS"
+          snap connections chromium | grep -E 'gnome|gtk|desktop|content' | head -20 || true
+          echo "VERSION"
+          timeout 20 chromium --version 2>&1 || true
+          echo "HEADLESS"
+          timeout 30 chromium --headless --no-sandbox --disable-gpu --disable-dev-shm-usage --dump-dom about:blank 2>&1 | tail -16
+          echo "DONE"
+          REMOTE

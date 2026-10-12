@@ -1,0 +1,28 @@
+[Unit]
+Description=Vorlen local browser broker (safe-mode)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=vorlen-worker
+Group=vorlen-worker
+ExecStart=/usr/bin/python3 /opt/vorlen-worker/browser_broker.py
+Restart=on-failure
+RestartSec=5
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=VORLEN_BROKER_STATE_DIR=/var/lib/vorlen-browser
+StateDirectory=vorlen-browser
+StateDirectoryMode=0700
+UMask=0077
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectHome=yes
+ProtectSystem=strict
+MemoryMax=180M
+TasksMax=35
+RestrictSUIDSGID=yes
+LockPersonality=yes
+
+[Install]
+WantedBy=multi-user.target
