@@ -1,3 +1,5 @@
+The active native LinkedIn session service is `vorlen-session.service`. See [the broker runbook](../docs/native-session-broker.md) for deployment, connection and recovery. The older `vorlen-worker.service` below remains a separate health/queue service.
+
 # Vorlen Oracle worker
 
 This isolated service intentionally starts in **standby**. It uses Python's

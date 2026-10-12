@@ -1,3 +1,5 @@
+> Historical foundation notes. The implemented native broker is documented in [native-session-broker.md](native-session-broker.md).
+
 ## First-party session connection management
 
 This is a safe account-holder connection-management interface, **not** a LinkedIn password login automation. The new authenticated /api/v1/linkedin/sessions endpoint supports listing, registering and revoking empty connection records. No password, verification code, LinkedIn cookie, or secret is accepted.

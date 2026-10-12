@@ -1,3 +1,5 @@
+> Historical foundation notes. The implemented native broker is documented in [native-session-broker.md](native-session-broker.md).
+
 # Vorlen Connect session-based LinkedIn integration
 
 ## Scope and facts

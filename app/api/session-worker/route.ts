@@ -26,6 +26,7 @@ export async function POST(req:Request){
   const result=z.object({rows:z.array(z.record(z.string())),changes:z.number(),connections:z.array(z.string().uuid())}).parse(await response.json());
   if(input.action==='claim'){
    const rows=await Promise.all(result.rows.map(async (row:Record<string,string>)=>{const {encrypted_input,...publicRow}=row;return {...publicRow,input:JSON.parse(await decrypt(encrypted_input,key,sessionContext(owner,row.id)))};}));
+   return json({data:{...result,rows,owner_id:owner}});
   }
   return json({data:{...result,owner_id:owner}});
  }catch{return json({error:'worker request failed'},400);}

@@ -1,3 +1,5 @@
+> Historical foundation notes. The implemented native broker is documented in [native-session-broker.md](native-session-broker.md).
+
 # First-party session broker — encryption guardrails
 
 The `session-vault.mjs` envelope provides authenticated AES-GCM encryption for **opaque references** to a future authorised provider session broker. It binds the ciphertext to the Vorlen tenant owner and connection UUID, validates expiry, and limits its maximum lifetime to 24 hours.

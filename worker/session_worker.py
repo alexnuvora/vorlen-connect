@@ -81,7 +81,7 @@ class Vault:
 
 
 def signed_api(action, **values):
-    body = json.dumps({'action': action, 'version': VERSION, **values}, separators=(',', ':')).encode()
+    body = json.dumps({'action': action, 'version': VERSION, **values}, separators=(',', ':'), ensure_ascii=False).encode()
     timestamp, nonce = str(int(time.time() * 1000)), str(uuid.uuid4())
     key = serialization.load_pem_private_key((ROOT / 'signing.pem').read_bytes(), password=None)
     signature = key.sign((timestamp + '\n' + nonce + '\n' + hashlib.sha256(body).hexdigest()).encode())
@@ -140,9 +140,14 @@ def clean_records(data, count):
                     texts.append(p[field][:5000])
         result.append({'id': str(row.get('entityUrn') or row.get('id') or '')[:500],
                        'people': people[:20], 'text': texts[:10],
-                       'created_at': row.get('createdAt'), 'last_activity_at': row.get('lastActivityAt')})
+                       'created_at': row.get('createdAt') if isinstance(row.get('createdAt'), (int, float)) else None,
+                       'last_activity_at': row.get('lastActivityAt') if isinstance(row.get('lastActivityAt'), (int, float)) else None})
+    truncated = False
+    while len(json.dumps(result, ensure_ascii=False).encode()) > 100000:
+        result.pop()
+        truncated = True
     paging = data.get('paging') or {}
-    return {'items': result, 'paging': {k: paging[k] for k in ('start', 'count', 'total') if isinstance(paging.get(k), int)}}
+    return {'items': result, 'truncated': truncated, 'paging': {k: paging[k] for k in ('start', 'count', 'total') if isinstance(paging.get(k), int)}}
 
 
 class LinkedInBrowser:
