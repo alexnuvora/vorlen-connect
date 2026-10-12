@@ -1,0 +1,31 @@
+[Unit]
+Description=Vorlen encrypted LinkedIn session worker
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=vorlen-worker
+Group=vorlen-worker
+WorkingDirectory=/opt/vorlen-session
+Environment=PLAYWRIGHT_BROWSERS_PATH=/opt/vorlen-session-browsers
+Environment=VORLEN_SESSION_STATE_DIR=/var/lib/vorlen-session
+Environment=HOME=/var/lib/vorlen-session
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=/opt/vorlen-session-venv/bin/python /opt/vorlen-session/session_worker.py
+Restart=on-failure
+RestartSec=15
+TimeoutStopSec=40
+UMask=0077
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/vorlen-session
+MemoryHigh=550M
+MemoryMax=700M
+TasksMax=200
+LimitCORE=0
+
+[Install]
+WantedBy=multi-user.target

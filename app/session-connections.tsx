@@ -1,81 +1,49 @@
 'use client';
-import {useEffect,useState,FormEvent} from 'react';
-
-type Connection={
- id:string;label:string;state:string;verification_required:boolean;
- verification_kind:string|null;profile_id:string|null;last_verified_at:string|null;
- expires_at:string|null;revision:number;last_error_code:string|null;
-};
-type SessionResponse={success:boolean;data?:Connection[]|{id?:string;revoked?:boolean};error?:{message?:string}};
-
-const STATES:Record<string,string>={
- disconnected:'Record only — not connected',
- awaiting_login:'Awaiting approved authentication',
- verification_required:'Verification required with provider',
- connected:'Verified session',
- expired:'Expired',
- revoked:'Local record removed',
- error:'Connection error',
-};
+import {useCallback,useEffect,useState,FormEvent} from 'react';
+type Connection={id:string;label:string;state:string;verification_kind:string|null;profile_id:string|null;expires_at:string|null;last_error_code:string|null};
+type Job={id:string;connection_id:string;operation:string;state:string;public_input:Record<string,unknown>;content_hash:string;error_code?:string;result?:{ok:boolean;data?:unknown;error_code?:string}};
+const STATES:Record<string,string>={disconnected:'Ready to sign in',awaiting_login:'Signing in…',verification_required:'Verification required',connected:'Connected',expired:'Session expired',revoked:'Disconnected',error:'Connection needs attention'};
+const terminal=['succeeded','failed','unknown','cancelled'];
+async function api(body?:Record<string,unknown>){
+ const response=await fetch('/api/v1/linkedin/sessions',{method:body?'POST':'GET',headers:body?{'Content-Type':'application/json'}:undefined,body:body?JSON.stringify(body):undefined,credentials:'same-origin',cache:'no-store'});
+ const result=await response.json() as {success:boolean;data:any;error?:{message?:string}};if(!response.ok||!result.success)throw Error(result.error?.message||'Session service unavailable.');return result.data;
+}
 export default function SessionConnections(){
- const [list,setList]=useState<Connection[]>([]);
- const [label,setLabel]=useState('');
- const [loading,setLoading]=useState(true);
- const [busy,setBusy]=useState(false);
- const [message,setMessage]=useState('');
- const [error,setError]=useState('');
- async function request(action?:'create'|'revoke',id?:string){
-  const response=await fetch('/api/v1/linkedin/sessions',{
-   method:action?'POST':'GET',
-   headers:action?{'Content-Type':'application/json'}:undefined,
-   body:action?JSON.stringify(action==='create'?{action,label:label.trim()}:{action,id}):undefined,
-   credentials:'same-origin',
-   cache:'no-store'
-  });
-  const result:SessionResponse=await response.json();
-  if(!response.ok||!result.success)throw Error(result.error?.message||'Unable to contact session service.');
-  return result.data;
- }
- async function refresh(){
-  const rows=await request();
-  setList(Array.isArray(rows)?rows:[]);
- }
- useEffect(()=>{void refresh().catch(e=>setError(String(e.message||e))).finally(()=>setLoading(false));},[]);
- async function create(e:FormEvent<HTMLFormElement>){
-  e.preventDefault();setError('');setMessage('');setBusy(true);
-  try{
-   await request('create');
-   setLabel('');
-   await refresh();
-   setMessage('Local connection record created. No LinkedIn account has been connected.');
-  }catch(e){setError(String((e as Error).message||e));}
-  finally{setBusy(false);}
- }
- async function remove(id:string){
-  if(!window.confirm('Remove this local session record? This does not sign out or revoke any remote LinkedIn session.'))return;
-  setError('');setMessage('');setBusy(true);
-  try{await request('revoke',id);await refresh();setMessage('Local record removed. Remote LinkedIn sessions are unchanged.');}
-  catch(e){setError(String((e as Error).message||e));}
-  finally{setBusy(false);}
- }
- return <section className="panel" aria-labelledby="session-records-heading">
-  <div className="section-title"><h2 id="session-records-heading">Session integration · connection records</h2><span className="pill amber">Foundation only</span></div>
-  <p>This section manages Vorlen-owned connection records. It cannot log into LinkedIn or read messages yet. For working LinkedIn profile access and publishing, use the authorised OAuth connection above.</p>
-  {error&&<p className="notice error" role="alert">{error}</p>}
-  {message&&<p className="notice" role="status">{message}</p>}
-  <form onSubmit={create}>
-   <label>Connection label<input value={label} onChange={e=>setLabel(e.target.value)} minLength={1} maxLength={100} autoComplete="off" placeholder="e.g. Recruitment account" required/></label>
-   <button className="secondary" disabled={busy||!label.trim()}>Create local record</button>
-  </form>
-  {loading?<p role="status">Loading connection records…</p>:list.length===0?<p>No session records yet.</p>:
-   <div className="table-wrap"><table>
-    <thead><tr><th>Connection</th><th>Status</th><th>Actions</th></tr></thead>
-    <tbody>{list.map(item=><tr key={item.id}>
-     <td><strong>{item.label}</strong><p className="field-note">{item.id}</p></td>
-     <td>{STATES[item.state]||'Unknown'}{item.verification_required&&<p className="field-note">Provider verification: {item.verification_kind||'required'}</p>}</td>
-     <td><button className="secondary" type="button" disabled={busy||item.state==='revoked'} onClick={()=>void remove(item.id)}>Remove local record</button></td>
-    </tr>)}</tbody>
-   </table></div>}
-  <p className="field-note">Verification and session creation require a supported provider integration. Never enter your LinkedIn password or verification code in this form.</p>
+ const [list,setList]=useState<Connection[]>([]),[selected,setSelected]=useState(''),[label,setLabel]=useState('');
+ const [busy,setBusy]=useState(false),[error,setError]=useState(''),[message,setMessage]=useState(''),[heartbeat,setHeartbeat]=useState<string|null>(null);
+ const [mode,setMode]=useState('login'),[email,setEmail]=useState(''),[password,setPassword]=useState(''),[cookie,setCookie]=useState(''),[csrf,setCsrf]=useState(''),[code,setCode]=useState('');
+ const [jobId,setJobId]=useState(''),[job,setJob]=useState<Job|null>(null),[jobs,setJobs]=useState<Job[]>([]);
+ const refresh=useCallback(async()=>{const [rows,health,recent]=await Promise.all([api(),api({action:'health'}),api({action:'jobs'})]);setList(rows);setHeartbeat(health?.last_seen||null);setJobs(recent);},[]);
+ useEffect(()=>{let live=true;const tick=()=>{if(live)void refresh().catch(e=>{if(live)setError(e.message);});};tick();const timer=setInterval(tick,15000);return()=>{live=false;clearInterval(timer);};},[refresh]);
+ useEffect(()=>{if(!jobId)return;let live=true;let timer:ReturnType<typeof setTimeout>;const tick=async()=>{try{const row:Job=await api({action:'job',id:jobId});if(!live)return;setJob(row);if(terminal.includes(row.state)||row.state==='draft'){setJobId('');await refresh();}else timer=setTimeout(tick,4000);}catch(e){if(live){setError((e as Error).message);setJobId('');}}};void tick();return()=>{live=false;clearTimeout(timer);};},[jobId,refresh]);
+ const current=list.find(c=>c.id===selected),online=!!heartbeat&&Date.now()-Date.parse(heartbeat)<180000;
+ async function run(fn:()=>Promise<void>){setBusy(true);setError('');setMessage('');try{await fn();}catch(e){setError((e as Error).message);}finally{setBusy(false);}}
+ async function enqueue(operation:string,input:Record<string,unknown>={}){const data=await api({action:'enqueue',connection_id:selected,operation,input});setJob(null);setJobId(data.job_id);await refresh();}
+ async function create(e:FormEvent){e.preventDefault();await run(async()=>{const c=await api({action:'create',label:label.trim()});setSelected(c.id);setLabel('');await refresh();});}
+ async function login(e:FormEvent){e.preventDefault();const input=mode==='login'?{email,password}:{li_at:cookie,jsessionid:csrf};setPassword('');setCookie('');setCsrf('');await run(()=>enqueue(mode==='login'?'connect':'import',input));}
+ async function verify(e:FormEvent){e.preventDefault();const value=code;setCode('');await run(()=>enqueue('verify',{code:value}));}
+ async function review(id:string){await run(async()=>{const j=await api({action:'job',id});setSelected(j.connection_id);setJob(j);setJobId(terminal.includes(j.state)||j.state==='draft'?'':j.id);});}
+ return <section className="panel" aria-labelledby="session-heading">
+  <div className="section-title"><h2 id="session-heading">LinkedIn session connection</h2><span className={'pill '+(online?'green':'amber')}>{online?'Worker online':'Worker offline'}</span></div>
+  <p>Connect your LinkedIn account for profiles, inbox, connections and approved outreach. Your session is encrypted on your dedicated worker.</p>
+  {error&&<p className="notice error" role="alert">{error}</p>}{message&&<p className="notice" role="status">{message}</p>}
+  <form onSubmit={create}><label>New connection label<input value={label} onChange={e=>setLabel(e.target.value)} maxLength={100} placeholder="My LinkedIn account" required/></label><button className="secondary" disabled={busy||!label.trim()}>Add connection</button></form>
+  <label style={{marginTop:20}}>Account<select value={selected} onChange={e=>{setSelected(e.target.value);setPassword('');setCookie('');setCsrf('');setCode('');setJob(null);setJobId('');}}><option value="">Choose a connection</option>{list.filter(c=>c.state!=='revoked').map(c=><option key={c.id} value={c.id}>{c.label} · {STATES[c.state]}</option>)}</select></label>
+  {current&&<>
+   <p><strong>{STATES[current.state]}</strong>{current.profile_id&&<> · {current.profile_id}</>}{current.last_error_code&&<> · {current.last_error_code}</>}</p>
+   {current.state==='connected'&&<><p className="field-note">Session valid until {current.expires_at?new Date(current.expires_at).toLocaleString():'unknown'}. ChatGPT can use the session tools with connection ID <code>{current.id}</code>.</p><div className="draft-actions"><button className="secondary" disabled={busy||!!jobId||!online} onClick={()=>void run(()=>enqueue('profile'))}>Read my profile</button><button className="secondary" disabled={busy||!!jobId||!online} onClick={()=>void run(()=>enqueue('inbox'))}>Read inbox</button></div></>}
+   {['disconnected','expired','error','verification_required'].includes(current.state)&&<>
+    {current.state==='verification_required'&&<div className="draft"><h3>Complete verification</h3><p>{current.verification_kind==='captcha'?'LinkedIn requires a manual security check. Complete sign-in in your own browser and use “Import my existing session” below.':current.verification_kind==='push'?'Approve the sign-in request in your LinkedIn app, then check again.':'Enter the code LinkedIn sent you, or complete the sign-in approval in LinkedIn.'}</p>{['email','totp','other'].includes(current.verification_kind||'')&&<form onSubmit={verify}><label>Verification code<input value={code} onChange={e=>setCode(e.target.value)} autoComplete="one-time-code" minLength={4} maxLength={16} required/></label><button className="primary" disabled={busy||!!jobId||!online}>Verify code</button></form>}<button className="secondary" disabled={busy||!!jobId||!online} onClick={()=>void run(()=>enqueue('refresh'))}>Check verification again</button></div>}
+    <form onSubmit={login} autoComplete="off"><label>Connection method<select value={mode} onChange={e=>{setMode(e.target.value);setPassword('');setCookie('');setCsrf('');}}><option value="login">Sign in to LinkedIn</option><option value="import">Import my existing session</option></select></label>
+     {mode==='login'?<><label>LinkedIn email<input type="email" value={email} onChange={e=>setEmail(e.target.value)} autoComplete="username" required/></label><label>LinkedIn password<input type="password" value={password} onChange={e=>setPassword(e.target.value)} autoComplete="current-password" required/></label><p className="field-note">Used once to sign in on your worker. LinkedIn may ask you to verify this new location.</p></>:<><p>In your own signed-in LinkedIn browser, open Developer Tools → Application (or Storage) → Cookies → linkedin.com. Copy only your <code>li_at</code> and <code>JSESSIONID</code> cookie values here. Keep these private.</p><label>li_at<input type="password" value={cookie} onChange={e=>setCookie(e.target.value)} autoComplete="off" required/></label><label>JSESSIONID<input type="password" value={csrf} onChange={e=>setCsrf(e.target.value)} autoComplete="off" required/></label></>}
+     <button className="primary" disabled={busy||!!jobId||!online||(current.state==='verification_required'&&mode==='login')}>{mode==='login'?'Connect LinkedIn':'Verify and save my session'}</button>
+    </form>
+   </>}
+   {current.state!=='revoked'&&<button style={{marginTop:20}} className="secondary danger" disabled={busy} onClick={()=>{if(window.confirm('Disconnect this account from Vorlen and remove its saved session? Any message already sent cannot be undone.'))void run(async()=>{await api({action:'disconnect',connection_id:selected});setJobId('');setJob(null);await refresh();setMessage('Disconnected. Your worker will remove its saved session on its next poll.');});}}>Disconnect account</button>}
+  </>}
+  {job&&<div className="draft"><h3>{job.operation.replaceAll('_',' ')} · {job.state}</h3><p className="field-note">Account: {list.find(c=>c.id===job.connection_id)?.label||job.connection_id}</p>{job.state==='unknown'&&<p className="notice error">The send outcome is uncertain. Check LinkedIn before creating another draft; this action will not be retried automatically.</p>}{job.error_code&&<p role="alert">{job.error_code}</p>}{Object.keys(job.public_input||{}).length>0&&<pre className="message-preview">{JSON.stringify(job.public_input,null,2)}</pre>}{job.result&&<pre className="message-preview">{JSON.stringify(job.result.data||job.result,null,2)}</pre>}{job.state==='draft'&&<div className="draft-actions"><button className="primary" disabled={busy||!online} onClick={()=>{if(window.confirm('Send this exact message or invitation from the displayed account?'))void run(async()=>{await api({action:'approve',id:job.id,content_hash:job.content_hash});setJobId(job.id);});}}>Approve and send</button><button className="secondary" disabled={busy} onClick={()=>void run(async()=>{await api({action:'cancel',id:job.id});setJob({...job,state:'cancelled'});await refresh();})}>Reject draft</button></div>}</div>}
+  {jobId&&<p role="status">Worker is processing the request…</p>}
+  {jobs.length>0&&<details style={{marginTop:20}}><summary>Recent session activity and drafts</summary><div className="table-wrap"><table><thead><tr><th>Action</th><th>Status</th><th>Review</th></tr></thead><tbody>{jobs.map(j=><tr key={j.id}><td>{j.operation.replaceAll('_',' ')}</td><td>{j.state}</td><td><button className="secondary" disabled={busy} onClick={()=>void review(j.id)}>View</button></td></tr>)}</tbody></table></div></details>}
+  <p className="field-note" style={{marginTop:20}}>Profile and inbox access depend on your account and LinkedIn’s current interfaces. Recruiter access currently covers the workspace only. Messages and invitations require approval of the exact draft.</p>
  </section>;
 }

@@ -64,3 +64,8 @@ next-env.d.ts
 *.pfx
 *.tsbuildinfo
 supabase/.temp/
+
+# Session state and Python caches
+__pycache__/
+*.session
+*.pyc

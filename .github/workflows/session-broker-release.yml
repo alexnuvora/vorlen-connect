@@ -1,0 +1,79 @@
+name: Verify and deploy native session broker
+on:
+  push:
+    branches: [feature/live-session-broker]
+    paths: ['worker/session_worker.py', 'worker/deploy-session.sh', 'worker/vorlen-session.service', 'supabase/migrations/20261012090000_session_broker_jobs.sql', 'tests/session-broker*', '.github/workflows/session-broker-release.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: native-session-broker-release
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: --health-cmd pg_isready --health-interval 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --prefix /tmp/vorlen-test zod@3.25.76 && ln -s /tmp/vorlen-test/node_modules node_modules
+      - run: node --test tests/session-broker.test.mjs
+      - run: pip install cryptography==46.0.3 && python tests/session-broker-worker.py
+      - name: Test isolated SQL state machine and permissions
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -f tests/session-broker.sql
+  migrate:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Apply additive migration to Vorlen Supabase through CLI
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.VORLEN_CONNECT_SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.VORLEN_CONNECT_SUPABASE_DB_PASSWORD }}
+        run: |
+          set -euo pipefail
+          supabase link --project-ref oulypjxpbrlxbjrxzryf --password "$SUPABASE_DB_PASSWORD"
+          supabase db push --linked
+          node --input-type=module <<'NODE'
+          const query="select to_regclass('public.vc_session_jobs') is not null as jobs, (select relrowsecurity from pg_class where oid='public.vc_session_jobs'::regclass) as rls, has_function_privilege('service_role','public.vc_session_worker(text,text,jsonb)','execute') as worker, not has_function_privilege('anon','public.vc_session_worker(text,text,jsonb)','execute') as restricted";
+          const res=await fetch('https://api.supabase.com/v1/projects/oulypjxpbrlxbjrxzryf/database/query',{method:'POST',headers:{Authorization:'Bearer '+process.env.SUPABASE_ACCESS_TOKEN,'Content-Type':'application/json'},body:JSON.stringify({query,read_only:true})});
+          if(!res.ok)throw Error('Schema audit HTTP '+res.status);
+          const rows=await res.json();if(!rows[0]||Object.values(rows[0]).some(v=>v!==true))throw Error('Session schema verification failed');
+          console.log('PASS: session queue, RLS and restricted worker RPC');
+          NODE
+  worker:
+    needs: migrate
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy to exact new Oracle VM
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VORLEN_WORKER_SSH_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          umask 077
+          KEY="$(mktemp)"
+          trap 'rm -f "$KEY"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$KEY"
+          SSH_OPTS=(-i "$KEY" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15)
+          ssh "${SSH_OPTS[@]}" ubuntu@145.241.230.145 'mkdir -p /tmp/vorlen-session-release && chmod 700 /tmp/vorlen-session-release'
+          scp "${SSH_OPTS[@]}" worker/session_worker.py worker/vorlen-session.service ubuntu@145.241.230.145:/tmp/vorlen-session-release/
+          ssh "${SSH_OPTS[@]}" ubuntu@145.241.230.145 'bash -se' < worker/deploy-session.sh
