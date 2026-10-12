@@ -1,0 +1,51 @@
+name: Deploy Vorlen Loopback Browser Broker
+on:
+  push:
+    branches: [feature/interactive-browser-broker]
+    paths:
+      - '.github/workflows/deploy-browser-broker.yml'
+      - 'worker/browser_broker.py'
+      - 'worker/vorlen-browser.service'
+      - 'tests/browser-broker.test.py'
+permissions:
+  contents: read
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test broker safety
+        run: |
+          python3 -m unittest discover -s tests -p 'browser-broker.test.py' -v
+          python3 -m py_compile worker/browser_broker.py
+      - name: Deploy local broker
+        shell: bash
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VORLEN_WORKER_SSH_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          umask 077
+          KEY="$(mktemp)"
+          trap 'rm -f "$KEY"' EXIT
+          test -n "${SSH_PRIVATE_KEY:-}"
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$KEY"
+          ssh-keygen -y -P '' -f "$KEY" >/dev/null
+          SSH_OPTS=(-i "$KEY" -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=12)
+          HOST=ubuntu@145.241.230.145
+          ssh "${SSH_OPTS[@]}" "$HOST" 'test "$(hostname)" = vorlen && sudo -n true'
+          scp "${SSH_OPTS[@]}" worker/browser_broker.py worker/vorlen-browser.service "$HOST:/tmp/"
+          ssh "${SSH_OPTS[@]}" "$HOST" '
+            set -eu
+            sudo -n install -d -o root -g root -m 0755 /opt/vorlen-worker
+            sudo -n install -o root -g root -m 0644 /tmp/browser_broker.py /opt/vorlen-worker/browser_broker.py
+            sudo -n install -o root -g root -m 0644 /tmp/vorlen-browser.service /etc/systemd/system/vorlen-browser.service
+            rm -f /tmp/browser_broker.py /tmp/vorlen-browser.service
+            sudo -n systemctl daemon-reload
+            sudo -n systemctl enable --now vorlen-browser
+            sudo -n systemctl restart vorlen-browser
+            sleep 3
+            sudo -n systemctl is-active --quiet vorlen-browser
+            python3 -c '"'"'import json,urllib.request; h=json.load(urllib.request.urlopen("http://127.0.0.1:8765/health",timeout=3)); assert h["ready"] and h["authentication"]=="operator-local-only"; print("BROKER HEALTH VERIFIED loopback-only browser_available="+str(h["browser_available"]))'"'"'
+            if ss -lnt | grep -E "0[.]0[.]0[.]0:8765|:::8765"; then echo "Unsafe public broker listener"; exit 1; fi
+          '
