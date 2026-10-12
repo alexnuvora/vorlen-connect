@@ -1,7 +1,7 @@
 name: Deploy Vorlen Oracle Worker
 on:
   push:
-    branches: [ops/oracle-worker-setup-20261012]
+    branches: [feature/oracle-worker-queue]
     paths:
       - '.github/workflows/deploy-oracle-worker.yml'
       - 'worker/**'
@@ -51,5 +51,5 @@ jobs:
             sleep 3
             sudo -n systemctl is-active --quiet vorlen-worker
             sudo -n systemctl is-enabled --quiet vorlen-worker
-            sudo -n python3 -c '"'"'import json,pathlib; p=pathlib.Path("/var/lib/vorlen-worker/status.json"); d=json.loads(p.read_text()); assert d["mode"]=="standby" and d["ready"] and not d["linkedin_actions_enabled"]; print("WORKER VERIFIED",d["service"],d["mode"],d["last_heartbeat_utc"])'"'"'
+            sudo -n python3 -c '"'"'import json,pathlib; p=pathlib.Path("/var/lib/vorlen-worker/status.json"); d=json.loads(p.read_text()); assert d["mode"] in ("standby","queue") and d["ready"] and not d["linkedin_actions_enabled"]; print("WORKER VERIFIED",d["service"],d["mode"],d["last_heartbeat_utc"])'"'"'
           '
