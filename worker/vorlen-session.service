@@ -15,7 +15,7 @@ Environment=PYTHONDONTWRITEBYTECODE=1
 ExecStart=/opt/vorlen-session-venv/bin/python /opt/vorlen-session/session_worker.py
 Restart=on-failure
 RestartSec=15
-TimeoutStopSec=40
+TimeoutStopSec=150
 UMask=0077
 NoNewPrivileges=true
 ProtectSystem=strict

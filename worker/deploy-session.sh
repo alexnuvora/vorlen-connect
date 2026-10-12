@@ -37,11 +37,15 @@ sudo install -m 644 /tmp/vorlen-session-release/vorlen-session.service /etc/syst
 echo 'Installing session service'
 sudo systemctl daemon-reload
 sudo systemctl enable vorlen-session.service
-echo 'Starting session service'
-sudo timeout --kill-after=5s 60 systemctl restart vorlen-session.service
-sudo systemctl is-active --quiet vorlen-session.service
+echo 'Stopping worker gracefully before isolated browser check'
+sudo timeout --kill-after=5s 175 systemctl stop vorlen-session.service
+# Always restore service after the bounded smoke check, even if it fails.
+trap 'sudo systemctl start vorlen-session.service' EXIT
 echo 'Testing browser under service privileges'
 # Same user/sandbox policy as the service, no account credentials involved.
 sudo -n systemctl stop vorlen-session-smoke.service 2>/dev/null || true
 sudo -n systemd-run --unit=vorlen-session-smoke --collect --quiet --wait --pipe --uid=vorlen-worker --property=RuntimeMaxSec=120 --property=NoNewPrivileges=true --property=ProtectSystem=strict --property=ProtectHome=true --property=PrivateTmp=true --property=ReadWritePaths=/var/lib/vorlen-session --setenv=PLAYWRIGHT_BROWSERS_PATH=/opt/vorlen-session-browsers --setenv=HOME=/var/lib/vorlen-session /opt/vorlen-session-venv/bin/python /opt/vorlen-session/browser-smoke.py </dev/null
+sudo systemctl start vorlen-session.service
+sudo systemctl is-active --quiet vorlen-session.service
+trap - EXIT
 sudo systemctl show vorlen-session.service -p ActiveState -p SubState -p MemoryCurrent -p MemoryMax

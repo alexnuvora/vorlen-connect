@@ -11,3 +11,17 @@ with sync_playwright() as p:
   assert page.title()=='Vorlen smoke'
   assert page.evaluate('1+1')==2
   print('SANDBOXED_DEPLOYMENT_PASS',flush=True)
+  # Public, credential-free reachability check. This is not an authenticated test.
+  import json
+  from urllib.parse import urlparse
+  try:
+   response=page.goto('https://www.linkedin.com/login',wait_until='domcontentloaded',timeout=45000)
+   parsed=urlparse(page.url)
+   print(json.dumps({'check':'public_linkedin_login','status':response.status if response else None,
+    'linkedin_host':parsed.hostname in ('www.linkedin.com','linkedin.com'),
+    'checkpoint':'/checkpoint/' in parsed.path,
+    'username_fields':page.locator('input#username').count(),
+    'password_fields':page.locator('input#password').count(),
+    'submit_buttons':page.locator('form:has(input#password) button[type="submit"]').count()}),flush=True)
+  except Exception as exc:
+   print(json.dumps({'check':'public_linkedin_login','error_type':type(exc).__name__}),flush=True)

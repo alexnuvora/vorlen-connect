@@ -23,7 +23,7 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 import native_linkedin
 import native_mail
 
-VERSION = 'session-broker-1.1.0'
+VERSION = 'session-broker-1.1.1'
 API = 'https://connect.vorlen.co.uk/api/session-worker'
 ROOT = Path(os.environ.get('VORLEN_SESSION_STATE_DIR', '/var/lib/vorlen-session'))
 STOP = False
@@ -159,6 +159,7 @@ class LinkedInBrowser:
         self.scope = None
         self.challenge_until = 0
         self.last_use = 0
+        self.stage = 'IDLE'
 
     def close(self):
         try:
@@ -179,8 +180,10 @@ class LinkedInBrowser:
         state = None
         if not fresh:
             state = self.vault.load(owner, connection)['storage']
+        self.stage='BROWSER_LAUNCH'
         self.browser = self.playwright.chromium.launch(channel='chromium', headless=True,
             chromium_sandbox=True, args=['--disable-dev-shm-usage'])
+        self.stage='BROWSER_CONTEXT'
         self.context = self.browser.new_context(storage_state=state, locale='en-GB', accept_downloads=False)
         self.context.set_default_timeout(20000)
         self.page = self.context.new_page()
@@ -196,6 +199,7 @@ class LinkedInBrowser:
         url = 'https://www.linkedin.com/voyager/api' + path
         if params:
             url += '?' + urlencode(params)
+        self.stage='PROVIDER_REQUEST'
         r = self.context.request.fetch(url, method=method, data=data,
             headers={'csrf-token': csrf, 'x-restli-protocol-version': '2.0.0', 'accept': 'application/json'},
             timeout=25000, max_redirects=0)
@@ -251,6 +255,7 @@ class LinkedInBrowser:
 
     def run(self, job):
         owner, cid, op, p = job['owner_id'], job['connection_id'], job['operation'], job['input']
+        self.stage='BROWSER_OPERATION'
         if op in ('connect', 'import'):
             self.vault.remove(owner, cid)
             self.open(owner, cid, fresh=True)
@@ -259,10 +264,23 @@ class LinkedInBrowser:
                                           'path': '/', 'secure': True, 'httpOnly': True}
                                          for name, value in [('li_at', p['li_at']), ('JSESSIONID', p['jsessionid'])]])
                 return self.connected()
-            self.page.goto('https://www.linkedin.com/login', wait_until='domcontentloaded', timeout=30000)
-            self.page.locator('#username').fill(p['email'])
-            self.page.locator('#password').fill(p['password'])
-            self.page.locator('button[type="submit"]').click()
+            self.stage='LOGIN_NAVIGATION'
+            self.page.goto('https://www.linkedin.com/login',wait_until='domcontentloaded',timeout=45000)
+            current=urlparse(self.page.url)
+            if current.hostname not in ('www.linkedin.com','linkedin.com'):raise BrokerError('UNEXPECTED_LOGIN_REDIRECT')
+            username=self.page.locator('input#username')
+            password=self.page.locator('input#password')
+            if username.count()!=1 or password.count()!=1:
+                # Surface checkpoints without trying to fill a different page.
+                if '/checkpoint/' in current.path:return self.login_result()
+                raise BrokerError('LOGIN_FORM_UNAVAILABLE')
+            self.stage='LOGIN_FORM_FILL'
+            username.fill(p['email']);password.fill(p['password'])
+            form=password.locator('xpath=ancestor::form')
+            submit=form.locator('button[type="submit"]')
+            if submit.count()!=1:raise BrokerError('LOGIN_FORM_UNAVAILABLE')
+            self.stage='LOGIN_SUBMIT'
+            submit.click()
             self.page.wait_for_timeout(2500)
             return self.login_result()
         if op in ('verify', 'refresh'):
@@ -379,9 +397,13 @@ def main():
                         if exc.code in ('AUTH_REQUIRED', 'SESSION_EXPIRED', 'LOGIN_FAILED', 'VERIFICATION_EXPIRED'):
                             vault.remove(job['owner_id'], job['connection_id'])
                             browser.close()
-                    except Exception:
-                        # Never log exception text: Playwright errors can contain inputs.
-                        result = {'ok': False, 'error_code': 'BROWSER_OPERATION_FAILED'}
+                    except Exception as exc:
+                        # Only fixed stage/type codes; Playwright exception text can contain credentials.
+                        kind='TIMEOUT' if type(exc).__name__=='TimeoutError' else 'FAILED'
+                        stage=browser.stage if browser.stage in ('BROWSER_LAUNCH','BROWSER_CONTEXT','LOGIN_NAVIGATION','LOGIN_FORM_FILL','LOGIN_SUBMIT','PROVIDER_REQUEST') else 'BROWSER_OPERATION'
+                        code=stage+'_'+kind
+                        print(json.dumps({'event':'job_failed','operation':job['operation'],'code':code}),flush=True)
+                        result = {'ok': False, 'error_code': code}
                         browser.close()
                     finally:
                         signal.alarm(0)
