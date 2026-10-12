@@ -21,7 +21,9 @@ jobs:
             history:"select j.jobname,r.runid,r.status,r.return_message,r.start_time,r.end_time from cron.job_run_details r left join cron.job j on j.jobid=r.jobid order by r.start_time desc limit 30",
             funcs:"select n.nspname,p.proname from pg_proc p join pg_namespace n on n.oid=p.pronamespace where p.proname like 'vc_dispatch%'",
             vault_names:"select name,created_at from vault.secrets where name like 'vorlen%'",
-            extensions:"select extname from pg_extension where extname in ('pg_cron','pg_net','supabase_vault')"
+            extensions:"select extname from pg_extension where extname in ('pg_cron','pg_net','supabase_vault')",
+            http_outcomes:"select id,status_code,left(content::text,200) as response,error_msg,created from net._http_response order by created desc limit 12",
+            dispatcher:"select p.proname,n.nspname,position('connect.vorlen.co.uk/api/cron/linkedin-publish' in pg_get_functiondef(p.oid))>0 as correct_url,position('vorlen_linkedin_scheduler_token' in pg_get_functiondef(p.oid))>0 as vault_secret,position('http_get' in pg_get_functiondef(p.oid))>0 as http_get,position('http_post' in pg_get_functiondef(p.oid))>0 as http_post from pg_proc p join pg_namespace n on n.oid=p.pronamespace where p.proname='dispatch_linkedin_posts'"
           };
           for(const [name,query] of Object.entries(queries)){
             try{
