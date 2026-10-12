@@ -1,0 +1,47 @@
+name: Install Vorlen MCP OAuth database schema
+on:
+  push:
+    branches: [feature/mcp-oauth21]
+    paths: ['.github/workflows/deploy-vorlen-oauth-schema.yml']
+permissions:
+  contents: read
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Apply verified migrations to exact Vorlen Connect project
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.VORLEN_CONNECT_SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.VORLEN_CONNECT_SUPABASE_DB_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "$SUPABASE_ACCESS_TOKEN"
+          test -n "$SUPABASE_DB_PASSWORD"
+          supabase link --project-ref oulypjxpbrlxbjrxzryf --password "$SUPABASE_DB_PASSWORD"
+          supabase migration list --linked
+          supabase db push --linked
+          supabase migration list --linked
+      - name: Verify OAuth schema exists with owner-scoped RPC, RLS and restricted grants
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.VORLEN_CONNECT_SUPABASE_ACCESS_TOKEN }}
+        run: |
+          node --input-type=module <<'NODE'
+          const query=`select
+            to_regclass('public.vc_oauth_clients') is not null as clients,
+            to_regclass('public.vc_oauth_grants') is not null as grants,
+            exists(select 1 from pg_proc where proname='vc_oauth_control' and pronamespace='public'::regnamespace) as rpc,
+            coalesce((select relrowsecurity from pg_class where oid=to_regclass('public.vc_oauth_grants')),false) as rls,
+            not has_function_privilege('anon','public.vc_oauth_control(text,text,jsonb)','execute') as anon_restricted,
+            not has_function_privilege('authenticated','public.vc_oauth_control(text,text,jsonb)','execute') as user_restricted`;
+          const url='https://api.supabase.com/v1/projects/oulypjxpbrlxbjrxzryf/database/query';
+          const r=await fetch(url,{method:'POST',headers:{Authorization:'Bearer '+process.env.SUPABASE_ACCESS_TOKEN,'Content-Type':'application/json'},body:JSON.stringify({query,read_only:true})});
+          if(!r.ok)throw Error('Schema verification HTTP '+r.status);
+          const data=await r.json();const row=Array.isArray(data)?data[0]:data?.result?.[0];
+          if(!row||!Object.values(row).every(Boolean))throw Error('OAuth schema or access controls missing');
+          console.log('Verified OAuth clients, grants, RPC, RLS and restricted roles for Vorlen Connect');
+          NODE
