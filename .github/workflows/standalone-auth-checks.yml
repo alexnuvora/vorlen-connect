@@ -7,6 +7,11 @@ on:
       - 'app/logout/**'
       - 'app/reset-password/**'
       - 'proxy.ts'
+      - 'lib/linkedin-service.mjs'
+      - 'lib/direct-catalog.mjs'
+      - 'lib/supabase-store.mjs'
+      - 'app/api/cron/**'
+      - 'supabase/migrations/**'
       - 'lib/standalone-auth.mjs'
       - '.github/workflows/standalone-auth-checks.yml'
   workflow_dispatch:
