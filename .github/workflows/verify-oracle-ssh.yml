@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 4
     steps:
-      # Re-run after SSH repository secret was provisioned.
+      # Test new Oracle VM; read-only remote host identity check.
       - name: Check saved key and connect without altering instance
         shell: bash
         env:
@@ -30,4 +30,4 @@ jobs:
             exit 1
           fi
           echo 'RESULT: Saved SSH private key parses successfully'
-          ssh -i "$KEY_FILE" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=12 -o ConnectionAttempts=1 ubuntu@193.123.183.10 'printf "RESULT: SSH authenticated; user=%s; kernel=%s; hostname=%s\n" "$(whoami)" "$(uname -s)" "$(hostname)"'
+          ssh -i "$KEY_FILE" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=12 -o ConnectionAttempts=1 ubuntu@145.241.230.145 'printf "RESULT: SSH authenticated; user=%s; kernel=%s; hostname=%s\n" "$(whoami)" "$(uname -s)" "$(hostname)"'
