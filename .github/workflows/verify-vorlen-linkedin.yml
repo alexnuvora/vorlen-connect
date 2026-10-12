@@ -22,6 +22,11 @@ jobs:
           set -euo pipefail
           test -n "$SUPABASE_ACCESS_TOKEN" || { echo "::error::Missing project access token"; exit 1; }
           test -n "$SUPABASE_DB_PASSWORD" || { echo "::error::Add VORLEN_CONNECT_SUPABASE_DB_PASSWORD to GitHub Actions secrets"; exit 1; }
-          supabase link --project-ref oulypjxpbrlxbjrxzryf
+          python3 - <<'PY'
+          import os
+          value=os.environ["SUPABASE_DB_PASSWORD"]
+          print("DB password diagnostics: length=",len(value),"whitespace_at_edges=",bool(value and (value[0].isspace() or value[-1].isspace())),"contains_newline=",("\\n" in value or "\\r" in value))
+          PY
+          supabase link --project-ref oulypjxpbrlxbjrxzryf --password "$SUPABASE_DB_PASSWORD"
           supabase migration list --linked
           supabase db push --linked --dry-run
