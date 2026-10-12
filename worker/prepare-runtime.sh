@@ -5,7 +5,9 @@ import urllib.request,json
 r=urllib.request.Request('http://169.254.169.254/opc/v2/instance/',headers={'Authorization':'Bearer Oracle'})
 d=json.load(urllib.request.urlopen(r,timeout=5))
 assert d['id']=='ocid1.instance.oc1.uk-london-1.anwgiljtdycw3nacke4vonqaqm7nt3pca47x4fzlhozzeeqnypzrogqudg7a'
-print('Exact Vorlen VM verified')
+assert d['shape']=='VM.Standard.E2.1.Micro', 'Paid or unapproved shape refused'
+assert d['region']=='uk-london-1', 'Unexpected region refused'
+print('Exact Vorlen VM and approved Always Free-eligible shape verified')
 PY
 sudo -n apt-get update -qq
 sudo -n env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends python3-venv
