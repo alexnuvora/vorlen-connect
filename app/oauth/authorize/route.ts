@@ -29,7 +29,7 @@ export async function POST(req:NextRequest){
   if(!valid)return new Response('OAuth client no longer valid',{status:400});
   const clear=(url:string)=>{const response=NextResponse.redirect(url,303);response.cookies.set(pendingCookie,'',{httpOnly:true,secure:true,sameSite:'lax',path:'/',maxAge:0});return response;};
   if(form.get('decision')!=='approve'){const u=new URL(pending.redirect_uri);u.searchParams.set('error','access_denied');if(pending.state)u.searchParams.set('state',pending.state);return clear(u.href);}
-  const code=randomToken();const r=await store('issue_code',{client_id:pending.client_id,redirect_uri:pending.redirect_uri,pkce_challenge:pending.challenge,resource:RESOURCE,secret_hash:digest(code)});
+  const code=digest(pending.csrf+process.env.VORLEN_SESSION_KEY);const r=await store('issue_code',{client_id:pending.client_id,redirect_uri:pending.redirect_uri,pkce_challenge:pending.challenge,resource:RESOURCE,secret_hash:digest(code)});
   if(r.changes!==1)return new Response('Could not issue authorisation',{status:503});
   return clear(safeRedirect(pending.redirect_uri,code,pending.state));
  }catch{return new Response('Authorisation expired or invalid',{status:400});}
