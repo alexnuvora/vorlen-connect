@@ -44,3 +44,9 @@ test('coverage does not confuse adapters, blocked features and live verification
  const rows=nativeCoverage();assert.equal(rows.length,40);assert.equal(new Set(rows.map(r=>r.id)).size,40);
  assert(rows.every(r=>r.live_verified===false));assert.equal(rows.find(r=>r.id==='recruiter.get_cv').implementation,'blocked');
 });
+test('native research requires an unambiguous account and exposes supported limits',async()=>{
+ await assert.rejects(nativeCall({rate:async()=>{},db:{rpc:async()=>({rows:[]})}},'enrich.extract_employees',{params:{company_url:'https://www.linkedin.com/company/example'}}),{code:'ACCOUNT_REQUIRED'});
+ assert.deepEqual(nativeInput('enrich.extract_employees',{params:{company_url:'https://www.linkedin.com/company/example',limit:5}}),{identifier:'example',count:5});
+ assert.equal(validateSessionInput('search_jobs',{keywords:'engineer',is_remote:true,job_type:'fulltime'}).job_type,'fulltime');
+ assert.throws(()=>validateSessionInput('search_jobs',{keywords:'engineer',board:'indeed'}));
+});

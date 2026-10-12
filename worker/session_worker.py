@@ -23,7 +23,7 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 import native_linkedin
 import native_mail
 
-VERSION = 'session-broker-1.1.1'
+VERSION = 'session-broker-1.2.0'
 API = 'https://connect.vorlen.co.uk/api/session-worker'
 ROOT = Path(os.environ.get('VORLEN_SESSION_STATE_DIR', '/var/lib/vorlen-session'))
 STOP = False
@@ -33,6 +33,22 @@ class BrokerError(Exception):
     def __init__(self, code):
         self.code = code
         super().__init__(code)
+
+
+def login_controls(page):
+    # LinkedIn's React login uses generated IDs and duplicate hidden forms.
+    # Select only visible semantic controls and refuse ambiguous targets.
+    password=page.locator('input[type="password"]:visible')
+    password.first.wait_for(state='visible',timeout=20000)
+    username=page.locator('input[autocomplete~="username"]:visible, input[type="email"]:visible, input#username:visible')
+    if username.count()!=1 or password.count()!=1:raise BrokerError('LOGIN_FORM_UNAVAILABLE')
+    form=password.locator('xpath=ancestor::form[1]')
+    scope=form if form.count()==1 else page
+    submit=scope.locator('button:visible').filter(has_text=re.compile(r'^\s*Sign in\s*$',re.I))
+    if submit.count()!=1:
+        submit=scope.locator('button[type="submit"]:visible')
+    if submit.count()!=1:raise BrokerError('LOGIN_FORM_UNAVAILABLE')
+    return username,password,submit
 
 
 def connection_key(owner, connection):
@@ -268,17 +284,10 @@ class LinkedInBrowser:
             self.page.goto('https://www.linkedin.com/login',wait_until='domcontentloaded',timeout=45000)
             current=urlparse(self.page.url)
             if current.hostname not in ('www.linkedin.com','linkedin.com'):raise BrokerError('UNEXPECTED_LOGIN_REDIRECT')
-            username=self.page.locator('input#username')
-            password=self.page.locator('input#password')
-            if username.count()!=1 or password.count()!=1:
-                # Surface checkpoints without trying to fill a different page.
-                if '/checkpoint/' in current.path:return self.login_result()
-                raise BrokerError('LOGIN_FORM_UNAVAILABLE')
+            if '/checkpoint/' in current.path:return self.login_result()
             self.stage='LOGIN_FORM_FILL'
+            username,password,submit=login_controls(self.page)
             username.fill(p['email']);password.fill(p['password'])
-            form=password.locator('xpath=ancestor::form')
-            submit=form.locator('button[type="submit"]')
-            if submit.count()!=1:raise BrokerError('LOGIN_FORM_UNAVAILABLE')
             self.stage='LOGIN_SUBMIT'
             submit.click()
             self.page.wait_for_timeout(2500)
@@ -301,7 +310,7 @@ class LinkedInBrowser:
         own = profile(self.request('/me')[0])
         if op == 'profile' and not p.get('identifier'):
             return {'ok': True, 'data': own}
-        if op in ('profile','contact','company','search_companies','search_people','network_status','sent_invitations','feed','post_comments'):
+        if op in ('profile','contact','company','search_companies','search_people','network_status','sent_invitations','feed','post_comments','employees','search_jobs'):
             return {'ok':True,'data':native_linkedin.read(self,op,p,BrokerError)}
         paging = {'start': p.get('start', 0), 'count': p.get('count', 10)}
         if op == 'inbox':

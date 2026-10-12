@@ -44,4 +44,17 @@ class Adapters(unittest.TestCase):
   c.uid.side_effect=[('OK',[b'9']),('OK',[(b'9 (UID 9 RFC822.SIZE 50 FLAGS ())',b'From: a@example.com\r\nSubject: Test\r\n\r\nHello'),b')'])]
   with patch.object(mail,'imap_connection',return_value=c):r=mail.messages({}, {'unread_only':True})
   c.select.assert_called_once_with('INBOX',readonly=True);self.assertIn('BODY.PEEK',c.uid.call_args_list[1].args[2]);self.assertTrue(r['items'][0]['unread'])
+class Research(unittest.TestCase):
+ def test_employee_search_resolves_company_before_filtering(self):
+  browser=MagicMock();browser.request.return_value=({'elements':[{'entityUrn':'urn:li:fs_company:123','name':'Example'}]},200)
+  with patch.object(li,'search',return_value={'items':[]}) as search:
+   result=li.read(browser,'employees',{'identifier':'example','count':5},BrokerError)
+   self.assertEqual(search.call_args.args[2]['current_company'],'123');self.assertEqual(result['company_name'],'Example')
+ def test_job_search_retains_source_and_does_not_invent_empty_results(self):
+  browser=MagicMock();browser.request.return_value=({'data':{'elements':[{'jobPosting':{'title':'Engineer'}}],'paging':{'start':0,'total':1}}},200)
+  result=li.read(browser,'search_jobs',{'keywords':'engineer','is_remote':True,'job_type':'fulltime'},BrokerError)
+  self.assertEqual(result['items'][0]['title'],'Engineer');self.assertEqual(result['aggregated_boards'],['linkedin']);self.assertFalse(result['other_boards_implemented'])
+  self.assertIn('workplaceType:List(2)',browser.request.call_args.args[1]['query'])
+  browser.request.return_value=({'data':{'elements':[{'unknown':'schema'}]}},200)
+  with self.assertRaises(BrokerError):li.read(browser,'search_jobs',{'keywords':'engineer'},BrokerError)
 if __name__=='__main__':unittest.main()

@@ -194,15 +194,15 @@
     },
     {
       "id": "enrich.search_jobs",
-      "implementation": "blocked",
-      "limitation": "Native adapter and live provider fixtures still required. No paid-provider fallback.",
+      "implementation": "adapter",
+      "limitation": "Native LinkedIn job search only. Indeed and Glassdoor aggregation remains unimplemented. Requires a connected native LinkedIn account.",
       "live_verified": false,
       "live_evidence": null
     },
     {
       "id": "enrich.extract_employees",
-      "implementation": "blocked",
-      "limitation": "Native adapter and live provider fixtures still required. No paid-provider fallback.",
+      "implementation": "adapter",
+      "limitation": "Searches LinkedIn employees for the resolved company ID. Requires a connected native LinkedIn account; maximum 25 per page.",
       "live_verified": false,
       "live_evidence": null
     },

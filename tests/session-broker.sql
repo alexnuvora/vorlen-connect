@@ -7,6 +7,7 @@ create role service_role bypassrls;
 \ir ../supabase/migrations/20261012080000_session_management.sql
 \ir ../supabase/migrations/20261012090000_session_broker_jobs.sql
 \ir ../supabase/migrations/20261012090001_native_channels_and_adapters.sql
+\ir ../supabase/migrations/20261012151514_native_job_and_employee_search.sql
 begin;
 set local role service_role;
 do $$
@@ -25,6 +26,12 @@ begin
  r=public.vc_session_worker('finish','owner-a',jsonb_build_object('nonce',gen_random_uuid(),'id',jid,'lease_token',lease,'ok',true,'connection_state','connected','reference',repeat('f',64),'profile_id','test-member','expires_at',now()+interval '1 hour','encrypted_result','cipher'));
  assert (r->>'changes')::int=1,'valid completion rejected';
  assert (select state='connected' from public.vc_linkedin_session_connections where id=c),'not connected';
+ jid=gen_random_uuid();
+ perform public.vc_session_broker('enqueue','owner-a',jsonb_build_object('connection_id',c,'id',jid,'operation','search_jobs','encrypted_input','search-fixture','content_hash',repeat('f',64)));
+ r=public.vc_session_worker('claim','owner-a',jsonb_build_object('nonce',gen_random_uuid()));lease=(r->'rows'->0->>'lease_token')::uuid;
+ assert r->'rows'->0->>'operation'='search_jobs','research read not claimed';
+ perform public.vc_session_worker('finish','owner-a',jsonb_build_object('nonce',gen_random_uuid(),'id',jid,'lease_token',lease,'ok',true));
+
  r=public.vc_session_broker('job','owner-b',jsonb_build_object('id',jid));assert jsonb_array_length(r->'rows')=0,'cross-owner result';
  perform public.vc_session_broker('enqueue','owner-a',jsonb_build_object('connection_id',c,'id',draft,'operation','send_message','encrypted_input','cipher','public_input','{"conversation_id":"test","content":"hi"}'::jsonb,'content_hash',repeat('b',64)));
  r=public.vc_session_worker('claim','owner-a',jsonb_build_object('nonce',gen_random_uuid()));assert jsonb_array_length(r->'rows')=0,'unapproved draft claimed';

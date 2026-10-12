@@ -2,7 +2,7 @@ name: Verify and deploy native session broker
 on:
   push:
     branches: [main, feature/live-session-broker]
-    paths: ['worker/native_*.py', 'lib/native-*.mjs', 'lib/session-input.mjs', 'tests/native-*', 'supabase/migrations/*_native_channels_and_adapters.sql', 'worker/session_worker.py', 'worker/deploy-session.sh', 'worker/browser-smoke.py', 'worker/vorlen-session.service', 'supabase/migrations/20261012090000_session_broker_jobs.sql', 'tests/session-broker*', 'tests/session-worker-route.test.mjs', '.github/workflows/session-broker-release.yml']
+    paths: ['worker/native_*.py', 'lib/native-*.mjs', 'lib/session-input.mjs', 'tests/native-*', 'supabase/migrations/*_native_*.sql', 'worker/session_worker.py', 'worker/deploy-session.sh', 'worker/browser-smoke.py', 'worker/vorlen-session.service', 'supabase/migrations/20261012090000_session_broker_jobs.sql', 'tests/session-broker*', 'tests/session-worker-route.test.mjs', '.github/workflows/session-broker-release.yml']
   workflow_dispatch:
 permissions:
   contents: read

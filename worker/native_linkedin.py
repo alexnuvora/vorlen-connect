@@ -7,7 +7,7 @@ from urllib.parse import quote
 import json
 
 # Projection applies recursively; response cookies, tokens and tracking blobs never leave worker.
-FIELDS = set('entityUrn objectUrn publicIdentifier firstName lastName name headline occupation summary industryName locationName geoLocationName address emailAddress phoneNumbers websites url category number type companyName title description degreeName fieldOfStudy timePeriod startDate endDate year month day schoolName school company miniCompany miniProfile profile positionView educationView skillView languageView certificationView volunteerExperienceView publicationView projectView honorView elements skills languages certifications experience education publications volunteer honors projects text body message attributedBody value createdAt lastActivityAt read unreadCount participants eventContent eventCreate content actor author commentary updateMetadata socialDetail totalSocialActivityCounts numLikes numComments numShares commentCount reactionCount navigationUrl primarySubtitle secondarySubtitle trackingUrn distance memberDistance connectionCount following followingInfo followingCount followersCount invitationType sentTime invitation relationshipStatus distance companyIndustries employeeCountRange employeeCount staffCount websiteUrl universalName foundedOn headquarters locations tagline companyPageUrl confirmedEmailAddress birthDateOn twitterHandles'.split())
+FIELDS = set('entityUrn objectUrn publicIdentifier firstName lastName name headline occupation summary industryName locationName geoLocationName address emailAddress phoneNumbers websites url category number type companyName title description degreeName fieldOfStudy timePeriod startDate endDate year month day schoolName school company miniCompany miniProfile profile positionView educationView skillView languageView certificationView volunteerExperienceView publicationView projectView honorView elements skills languages certifications experience education publications volunteer honors projects text body message attributedBody value createdAt lastActivityAt read unreadCount participants eventContent eventCreate content actor author commentary updateMetadata socialDetail totalSocialActivityCounts numLikes numComments numShares commentCount reactionCount navigationUrl primarySubtitle secondarySubtitle trackingUrn distance memberDistance connectionCount following followingInfo followingCount followersCount invitationType sentTime invitation relationshipStatus distance companyIndustries employeeCountRange employeeCount staffCount websiteUrl universalName foundedOn headquarters locations tagline companyPageUrl jobPostingId jobState listedAt expireAt formattedLocation employmentStatus workplaceTypes jobPosting companyDetails confirmedEmailAddress birthDateOn twitterHandles'.split())
 
 def project(value, depth=0):
     if depth > 10:
@@ -90,8 +90,36 @@ def read(browser,op,p,error):
         root=dereference(browser.request('/identity/profiles/'+ident+'/profileContactInfo')[0])
         if not any(k in root for k in ('emailAddress','phoneNumbers','websites','entityUrn')):raise error('PROVIDER_SCHEMA_CHANGED')
         return project(root)
-    if op=='company':
-        return collection(browser.request('/organization/companies',{'q':'universalName','universalName':p['identifier'],'decorationId':'com.linkedin.voyager.deco.organization.web.WebFullCompanyMain-12'})[0],1,error)
+    if op in ('company','employees'):
+        data=browser.request('/organization/companies',{'q':'universalName','universalName':p['identifier'],'decorationId':'com.linkedin.voyager.deco.organization.web.WebFullCompanyMain-12'})[0]
+        if op=='company':return collection(data,1,error)
+        rows=dereference(data).get('elements')
+        if not isinstance(rows,list) or len(rows)!=1:raise error('COMPANY_NOT_UNAMBIGUOUS')
+        urn=rows[0].get('entityUrn','');company_id=urn.rsplit(':',1)[-1]
+        if not company_id.isdigit():raise error('PROVIDER_SCHEMA_CHANGED')
+        result=search(browser,'search_people',{'current_company':company_id,**paging},error)
+        return {**result,'company_id':company_id,'company_name':rows[0].get('name'),'source':'linkedin'}
+    if op=='search_jobs':
+        esc=lambda value:quote(str(value),safe='')
+        selected=[]
+        if 'is_remote' in p:selected.append('workplaceType:List('+('2' if p['is_remote'] else '1')+')')
+        if p.get('job_type'):selected.append('jobType:List('+{'fulltime':'F','parttime':'P','contract':'C','internship':'I'}[p['job_type']]+')')
+        query='(origin:JOB_SEARCH_PAGE_QUERY_EXPANSION,keywords:'+esc(p['keywords'])
+        location=' '.join(v for v in (p.get('location'),p.get('country')) if v)
+        if location:query+=',locationFallback:'+esc(location)
+        query+=',selectedFilters:('+','.join(selected)+'),spellCorrectionEnabled:true)'
+        data=browser.request('/voyagerJobsDashJobCards',{'q':'jobSearch','query':query,'decorationId':'com.linkedin.voyager.dash.deco.jobs.search.JobSearchCardsCollection-174',**paging})[0]
+        root=dereference(data)
+        if not isinstance(root,dict) or not isinstance(root.get('elements'),list):raise error('PROVIDER_SCHEMA_CHANGED')
+        rows=[row for row in data.get('included',[]) if row.get('$type')=='com.linkedin.voyager.dash.jobs.JobPosting']
+        # Some responses are already denormalized; preserve known job cards only.
+        if not rows:
+            for card in root['elements']:
+                value=card.get('jobPosting') if isinstance(card,dict) else None
+                if isinstance(value,dict):rows.append(value)
+        if root['elements'] and not rows:raise error('PROVIDER_SCHEMA_CHANGED')
+        result=collection({'elements':rows,'paging':root.get('paging',{})},paging['count'],error)
+        return {**result,'source':'linkedin','aggregated_boards':['linkedin'],'other_boards_implemented':False}
     if op in ('search_people','search_companies'):return search(browser,op,p,error)
     if op=='network_status':
         root=dereference(browser.request('/identity/profiles/'+ident+'/networkinfo')[0])

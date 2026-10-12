@@ -1,7 +1,7 @@
 # Vorlen Connect native integration: live acceptance test
 
 This is a test plan, not a statement that LinkupAPI parity is complete. Code version
-0.5.0 / worker session-broker-1.1.0 introduces native compatibility routing and more
+0.6.0 / worker session-broker-1.2.0 introduces native compatibility routing and more
 adapters. A blocked, unverified or partial row is not a pass. Record actual results
 in `docs/native-parity.json`; do not mark a whole group passed from one sample.
 
@@ -15,12 +15,12 @@ in `docs/native-parity.json`; do not mark a whole group passed from one sample.
    for quota reset and redeploy that commit; do not upgrade or create another
    project to evade the quota.
 3. Ask ChatGPT: **Use Vorlen Connect capabilities and report its version and native
-   coverage.** Expected version: `0.5.0` (or a newer verified release), primary
+   coverage.** Expected version: `0.6.0` (or a newer verified release), primary
    provider `vorlen_native`. `parity_complete` remains false until all acceptance
    criteria actually pass. Refresh the plugin connection if its tool list is stale.
 4. Open `https://connect.vorlen.co.uk/?tab=direct`, sign in as the workspace owner,
    and confirm **Worker online**. The session health tool should show a heartbeat
-   within three minutes and worker `session-broker-1.1.0` or newer.
+   within three minutes and worker `session-broker-1.2.0` or newer.
 5. Keep Oracle FREE_TIER. The worker uses the existing London Micro instance,
    one browser, bounded memory and a 120-second action deadline. No paid proxies,
    extra instances or disks are required for these tests.
@@ -63,6 +63,8 @@ next job for that connection. Compare against your signed-in LinkedIn account.
 | Inbox / unread | channel_list_messages, category INBOX then UNREAD | Unread results match; reading does not intentionally mark seen |
 | Conversation | channel_get_conversation, conversation_id OR profile_url | Correct participants, existing text and ordering |
 | Feed | channel_search_content / get_feed | Real feed records and pagination |
+| LinkedIn job search | enrich / search_jobs, params.keywords | Correct keyword/location/type; source explicitly LinkedIn only |
+| Company employees | enrich / extract_employees, params.company_url | Company resolved before employee filter; matching people |
 | Post comments | channel_search_content / get_comments, params.post_url | Correct post, comments and available identities |
 
 Tool names above have the `vorlen_connect_` prefix. Account reads take top-level
@@ -151,7 +153,7 @@ schema/endpoint failures require a targeted adapter update and repeat of that ro
 The machine-readable matrix is authoritative. In addition to the tests above,
 blocked rows require native implementations and live fixtures: Recruiter jobs,
 applicants/CVs, profile viewers/activity, recommendations, content search/reactions,
-attachments, all inbox categories, native enrichment/job aggregation, mailbox
+attachments, all inbox categories, native enrichment and Indeed/Glassdoor job aggregation, mailbox
 OAuth and account webhooks. The wider public API also includes Sales Navigator,
 invitation mutations, publishing/engagement and job/project management beyond the
 40 actions exposed by the connected plugin. Passing this guide's implemented

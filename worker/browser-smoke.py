@@ -11,23 +11,23 @@ with sync_playwright() as p:
   assert page.title()=='Vorlen smoke'
   assert page.evaluate('1+1')==2
   print('SANDBOXED_DEPLOYMENT_PASS',flush=True)
-  # Public, credential-free reachability check. This is not an authenticated test.
+  from session_worker import login_controls
+  page.set_content('<form><input type="email" autocomplete="username" id="dynamic-1"><input type="password" autocomplete="current-password" id="dynamic-2"><button type="button">Sign in with Apple</button><button type="submit">Sign in</button></form><form style="display:none"><input type="email" autocomplete="username"><input type="password"><button type="submit">Sign in</button></form>')
+  username,password,submit=login_controls(page)
+  username.fill('synthetic@example.test');password.fill('synthetic-only')
+  assert username.input_value()=='synthetic@example.test'
+  assert password.input_value()=='synthetic-only'
+  assert submit.inner_text()=='Sign in'
+  print('VISIBLE_LOGIN_SELECTOR_FIXTURE_PASS',flush=True)
+  # Public, credential-free reachability and selector check. Never fill or submit.
   import json
   from urllib.parse import urlparse
   try:
    response=page.goto('https://www.linkedin.com/login',wait_until='domcontentloaded',timeout=45000)
-   try:page.locator('input[type="password"]').first.wait_for(state='attached',timeout=15000)
-   except Exception:pass
    parsed=urlparse(page.url)
+   if parsed.hostname not in ('www.linkedin.com','linkedin.com'):raise RuntimeError('Unexpected host')
+   username,password,submit=login_controls(page)
    print(json.dumps({'check':'public_linkedin_login','status':response.status if response else None,
-    'linkedin_host':parsed.hostname in ('www.linkedin.com','linkedin.com'),
-    'checkpoint':'/checkpoint/' in parsed.path,'path':parsed.path[:150],
-    'title':page.title()[:150],
-    'inputs':page.locator('input').evaluate_all('(els)=>els.slice(0,12).map(e=>({id:e.id,name:e.name,type:e.type,autocomplete:e.autocomplete}))'),
-    'buttons':page.locator('button').all_text_contents()[:12],
-    'public_page_text':page.locator('body').inner_text()[:700],
-    'username_fields':page.locator('input#username').count(),
-    'password_fields':page.locator('input#password').count(),
-    'submit_buttons':page.locator('form:has(input#password) button[type="submit"]').count()}),flush=True)
+    'linkedin_host':True,'login_controls_ready':True,'credentials_entered':False,'submitted':False}),flush=True)
   except Exception as exc:
-   print(json.dumps({'check':'public_linkedin_login','error_type':type(exc).__name__}),flush=True)
+   print(json.dumps({'check':'public_linkedin_login','login_controls_ready':False,'error_code':getattr(exc,'code',type(exc).__name__)}),flush=True)
