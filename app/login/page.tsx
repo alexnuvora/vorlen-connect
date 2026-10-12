@@ -35,6 +35,7 @@ export default async function Login({searchParams}:{searchParams:Promise<{return
          <input className="vl-input" id="email" type="email" name="email" placeholder="name@company.com" autoComplete="username" autoCapitalize="none" required/>
          <label className="vl-field vl-password-label" htmlFor="password">Password</label>
          <input className="vl-input" id="password" type="password" name="password" placeholder="Enter your password" autoComplete="current-password" required/>
+         <div className="vl-actions"><label><input type="checkbox" name="remember" value="yes" defaultChecked/> Stay signed in</label><a href="/reset-password">Forgot password?</a></div>
          <button className="vl-submit" type="submit">Sign in <span aria-hidden="true">→</span></button>
        </form>
        <div className="vl-secure"><span aria-hidden="true">◇</span> Your workspace is protected with secure authentication</div>
