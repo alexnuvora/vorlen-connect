@@ -5,8 +5,9 @@ import {makeRememberCookie,makeStandaloneCookie,refreshRememberCookie,REMEMBER_C
 
 const csrfName='__Host-vorlen-login-csrf';
 export async function proxy(request:NextRequest){
- const isLogin=request.nextUrl.pathname==='/login';
- const incoming=request.headers.get('cookie')||'';
+ const pathname=request.nextUrl.pathname;
+ const isLogin=pathname==='/login'||pathname==='/reset-password';
+ const isLoggingOut=pathname==='/logout'||pathname.startsWith('/signout');
  const headers=new Headers(request.headers);
  const setCookies:Array<{name:string;value:string;options:{httpOnly:true;secure:true;sameSite:'lax'|'strict';path:'/';maxAge:number}}>=[];
  if(isLogin){
@@ -18,7 +19,7 @@ export async function proxy(request:NextRequest){
   }
  }
  const saved=request.cookies.get(REMEMBER_COOKIE)?.value;
- if(saved&&process.env.VORLEN_SESSION_KEY&&process.env.SUPABASE_PUBLISHABLE_KEY){
+ if(!isLoggingOut&&saved&&process.env.VORLEN_SESSION_KEY&&process.env.SUPABASE_PUBLISHABLE_KEY){
   let valid=false;
   try {
    const current=request.cookies.get(STANDALONE_COOKIE)?.value;
@@ -32,7 +33,9 @@ export async function proxy(request:NextRequest){
    if(refreshed){
     const access=await makeStandaloneCookie(refreshed.token,refreshed.expiresAt);
     const rotated=await makeRememberCookie(refreshed.refreshToken,refreshed.rememberUntil);
-    headers.set('cookie',headers.get('cookie')?headers.get('cookie')+'; '+STANDALONE_COOKIE+'='+access+'; '+REMEMBER_COOKIE+'='+rotated:STANDALONE_COOKIE+'='+access+'; '+REMEMBER_COOKIE+'='+rotated);
+    const pairs=(headers.get('cookie')||'').split(';').map(x=>x.trim()).filter(x=>x&&!x.startsWith(STANDALONE_COOKIE+'=')&&!x.startsWith(REMEMBER_COOKIE+'='));
+    pairs.push(STANDALONE_COOKIE+'='+access,REMEMBER_COOKIE+'='+rotated);
+    headers.set('cookie',pairs.join('; '));
     setCookies.push({name:STANDALONE_COOKIE,value:access,options:{httpOnly:true,secure:true,sameSite:'lax',path:'/',maxAge:2700}});
     setCookies.push({name:REMEMBER_COOKIE,value:rotated,options:{httpOnly:true,secure:true,sameSite:'lax',path:'/',maxAge:Math.max(0,Math.ceil((refreshed.rememberUntil-Date.now())/1000))}});
    }else{
