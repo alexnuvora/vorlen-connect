@@ -1,0 +1,24 @@
+name: Prepare and verify session browser runtime
+on:
+  push:
+    branches: [feature/live-session-broker]
+    paths: ['.github/workflows/session-runtime.yml', 'worker/prepare-runtime.sh']
+permissions:
+  contents: read
+jobs:
+  runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install and test the dedicated runtime on the exact new VM
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VORLEN_WORKER_SSH_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          umask 077
+          KEY="$(mktemp)"
+          trap 'rm -f "$KEY"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$KEY"
+          SSH_OPTS=(-i "$KEY" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15)
+          ssh "${SSH_OPTS[@]}" ubuntu@145.241.230.145 'bash -se' < worker/prepare-runtime.sh
