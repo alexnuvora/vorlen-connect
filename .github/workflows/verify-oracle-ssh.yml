@@ -1,0 +1,32 @@
+name: Verify Oracle SSH Authentication
+on:
+  push:
+    branches: [test/vorlen-oracle-ssh-auth-20261012]
+    paths: ['.github/workflows/verify-oracle-ssh.yml']
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Check saved key and connect without altering instance
+        shell: bash
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VORLEN_WORKER_SSH_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${SSH_PRIVATE_KEY:-}" ]; then
+            echo "RESULT: Secret VORLEN_WORKER_SSH_PRIVATE_KEY is missing or empty"
+            exit 1
+          fi
+          umask 077
+          KEY_FILE="$(mktemp)"
+          trap 'rm -f "$KEY_FILE"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$KEY_FILE"
+          if ! ssh-keygen -y -P '' -f "$KEY_FILE" >/dev/null 2>&1; then
+            echo 'RESULT: The saved private key is invalid or needs a passphrase'
+            exit 1
+          fi
+          echo 'RESULT: Saved SSH private key parses successfully'
+          ssh -i "$KEY_FILE" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=12 -o ConnectionAttempts=1 ubuntu@193.123.183.10 'printf "RESULT: SSH authenticated; user=%s; kernel=%s; hostname=%s\n" "$(whoami)" "$(uname -s)" "$(hostname)"'
