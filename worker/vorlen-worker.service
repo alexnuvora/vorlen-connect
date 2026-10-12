@@ -1,18 +1,18 @@
 [Unit]
-Description=Vorlen dedicated background worker (standby)
+Description=Vorlen dedicated background worker
 After=network-online.target
 Wants=network-online.target
-
 [Service]
 Type=simple
 User=vorlen-worker
 Group=vorlen-worker
 WorkingDirectory=/opt/vorlen-worker
 ExecStart=/usr/bin/python3 /opt/vorlen-worker/worker.py
-Restart=on-failure
-RestartSec=5
+EnvironmentFile=-/etc/vorlen-worker/worker.env
 Environment=PYTHONDONTWRITEBYTECODE=1
 Environment=VORLEN_WORKER_STATE_DIR=/var/lib/vorlen-worker
+Restart=on-failure
+RestartSec=5
 StateDirectory=vorlen-worker
 StateDirectoryMode=0700
 UMask=0077
@@ -28,6 +28,5 @@ LockPersonality=yes
 MemoryMax=220M
 TasksMax=50
 TimeoutStopSec=25
-
 [Install]
 WantedBy=multi-user.target

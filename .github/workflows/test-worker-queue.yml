@@ -1,0 +1,50 @@
+name: Verify Vorlen Worker Queue Behaviour
+on:
+  push:
+    branches: [feature/oracle-worker-queue]
+    paths:
+      - '.github/workflows/test-worker-queue.yml'
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Test database queue lease and completion safely
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.VORLEN_CONNECT_SUPABASE_ACCESS_TOKEN }}
+        run: |
+          node --input-type=module <<'NODE'
+          import {randomUUID} from 'node:crypto';
+          const ref='oulypjxpbrlxbjrxzryf';
+          const token=process.env.SUPABASE_ACCESS_TOKEN;
+          if(!token)throw Error('Missing read/write management API access');
+          const sql=async query=>{
+           const r=await fetch('https://api.supabase.com/v1/projects/'+ref+'/database/query',{
+            method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
+            body:JSON.stringify({query})
+           });
+           const data=await r.json();
+           if(!r.ok)throw Error('DB HTTP '+r.status+' '+JSON.stringify(data).slice(0,150));
+           return data;
+          };
+          // Synthetic owner, isolated dedupe; never involves customer accounts.
+          const marker=randomUUID();
+          const owner='worker-qa-'+marker;
+          const inserted=await sql("insert into public.vc_worker_jobs(owner_id,kind,dedupe_key) values ('"+owner+"','health_probe','"+marker+"') returning id, state");
+          if(inserted?.[0]?.state!=='pending')throw Error('Failed to enqueue synthetic probe');
+          const claimed=await sql("set role service_role; select * from public.vc_worker_claim('oracle-qa-runner')");
+          if(!claimed?.length||claimed[0].id!==inserted[0].id||!claimed[0].lease_token)throw Error('Failed to claim synthetic probe');
+          const lease=claimed[0].lease_token;
+          const id=claimed[0].id;
+          const stale=await sql("set role service_role; select public.vc_worker_finish('"+id+"'::uuid,'00000000-0000-0000-0000-000000000000'::uuid,true,'{}') as completed");
+          if(stale?.[0]?.completed!==false)throw Error('Wrong lease was accepted');
+          const finished=await sql("set role service_role; select public.vc_worker_finish('"+id+"'::uuid,'"+lease+"'::uuid,true,'{\"ok\":true}'::jsonb) as completed");
+          if(finished?.[0]?.completed!==true)throw Error('Correct lease was rejected');
+          const again=await sql("set role service_role; select public.vc_worker_finish('"+id+"'::uuid,'"+lease+"'::uuid,true,'{}') as completed");
+          if(again?.[0]?.completed!==false)throw Error('Duplicate completion accepted');
+          const final=await sql("select state,attempts,result from public.vc_worker_jobs where id='"+id+"'");
+          if(final?.[0]?.state!=='succeeded'||final?.[0]?.attempts!==1)throw Error('Unexpected final state');
+          console.log('PASS queue enqueue -> claim -> reject wrong lease -> finish -> reject duplicate -> succeeded');
+          NODE
