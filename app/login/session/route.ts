@@ -3,13 +3,14 @@ import {authenticatePassword,makeStandaloneCookie,STANDALONE_COOKIE,standaloneCo
 import {canonicalOrigin,safeReturn} from '@/lib/auth-tokens.mjs';
 export const dynamic='force-dynamic';
 export async function POST(req:Request){
- const urlOrigin=new URL(req.url).origin;
- const allowed=[canonicalOrigin(process.env.APP_ORIGIN)];
- if(process.env.VERCEL_ENV==='preview'&&process.env.VERCEL_URL)allowed.push(canonicalOrigin('https://'+process.env.VERCEL_URL));
- if(!allowed.includes(urlOrigin))return new Response('Invalid deployment origin',{status:403});
- const origin=urlOrigin;
+ const suppliedOrigin=req.headers.get('origin');
+ const host=req.headers.get('host');
+ const previewHost=process.env.VERCEL_ENV==='preview'&&typeof host==='string'&&/^vorlen-connect-[a-z0-9-]+-talent-flow3\.vercel\.app$/.test(host);
+ const canonical=canonicalOrigin(process.env.APP_ORIGIN);
+ const origin=previewHost?'https://'+host:canonical;
+ if(suppliedOrigin!==origin)return new Response('Forbidden',{status:403});
  if(!standaloneConfigured())return new Response('Authentication is not configured.',{status:503});
- if(req.headers.get('origin')!==origin||!req.headers.get('content-type')?.startsWith('application/x-www-form-urlencoded'))return new Response('Forbidden',{status:403});
+ if(!req.headers.get('content-type')?.startsWith('application/x-www-form-urlencoded'))return new Response('Forbidden',{status:403});
  if(Number(req.headers.get('content-length')||0)>8000)return new Response('Invalid request',{status:413});
  try{
   const form=await req.formData();
