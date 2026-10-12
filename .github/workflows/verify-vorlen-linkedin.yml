@@ -29,4 +29,15 @@ jobs:
           PY
           supabase link --project-ref oulypjxpbrlxbjrxzryf --password "$SUPABASE_DB_PASSWORD"
           supabase migration list --linked
-          supabase db push --linked --dry-run
+          supabase db push --linked
+          supabase migration list --linked
+          node --input-type=module <<'NODE'
+          const token=process.env.SUPABASE_ACCESS_TOKEN;
+          const ref='oulypjxpbrlxbjrxzryf';
+          const sql="select to_regclass('public.vc_linkedin_post_reviews') is not null as reviews_table, to_regclass('public.vc_linkedin_post_audit') is not null as audit_table, exists(select 1 from pg_proc where proname='vc_linkedin_post_control' and pronamespace='public'::regnamespace) as approval_rpc, exists(select 1 from pg_class where oid=to_regclass('public.vc_linkedin_post_reviews') and relrowsecurity) as reviews_rls";
+          const r=await fetch('https://api.supabase.com/v1/projects/'+ref+'/database/query',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({query:sql,read_only:true})});
+          if(!r.ok)throw Error('Verification request returned HTTP '+r.status);
+          const data=await r.json();const row=Array.isArray(data)?data[0]:data?.result?.[0];
+          if(!row||!row.reviews_table||!row.audit_table||!row.approval_rpc||!row.reviews_rls)throw Error('Migration components are incomplete');
+          console.log('Verified reviews table, audit table, approval RPC and RLS on exact Vorlen Connect project.');
+          NODE
