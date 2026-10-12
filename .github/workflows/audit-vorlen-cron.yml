@@ -1,0 +1,33 @@
+name: Read only Vorlen cron audit
+on:
+  push:
+    branches: [audit/live-supabase-cron-20261012]
+    paths:
+      - '.github/workflows/audit-vorlen-cron.yml'
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Query schedules and recent execution history (read only)
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.VORLEN_CONNECT_SUPABASE_ACCESS_TOKEN }}
+        run: |
+          node --input-type=module <<'NODE'
+          const endpoint='https://api.supabase.com/v1/projects/oulypjxpbrlxbjrxzryf/database/query';
+          const queries={
+            jobs:"select jobid,jobname,schedule,active,command from cron.job order by jobid desc limit 30",
+            history:"select j.jobname,r.runid,r.status,r.return_message,r.start_time,r.end_time from cron.job_run_details r left join cron.job j on j.jobid=r.jobid order by r.start_time desc limit 30",
+            funcs:"select n.nspname,p.proname from pg_proc p join pg_namespace n on n.oid=p.pronamespace where p.proname like 'vc_dispatch%'",
+            vault_names:"select name,created_at from vault.secrets where name like 'vorlen%'",
+            extensions:"select extname from pg_extension where extname in ('pg_cron','pg_net','supabase_vault')"
+          };
+          for(const [name,query] of Object.entries(queries)){
+            try{
+              const res=await fetch(endpoint,{method:'POST',headers:{Authorization:'Bearer '+process.env.SUPABASE_ACCESS_TOKEN,'Content-Type':'application/json'},body:JSON.stringify({query,read_only:true})});
+              const data=await res.json();
+              console.log('AUDIT '+name+' HTTP '+res.status+' '+JSON.stringify(data).slice(0,8500));
+            }catch(e){console.log('AUDIT '+name+' ERROR '+e.message)}
+          }
+          NODE
