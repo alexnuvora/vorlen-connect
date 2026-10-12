@@ -17,7 +17,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Test broker safety
         run: |
-          python3 -m unittest discover -s tests -p 'browser-broker.test.py' -v
+          python3 tests/browser-broker.test.py
           python3 -m py_compile worker/browser_broker.py
       - name: Deploy local broker
         shell: bash
