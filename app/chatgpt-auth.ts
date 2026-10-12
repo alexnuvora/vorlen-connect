@@ -1,6 +1,7 @@
 import {cookies,headers} from 'next/headers';
 import {redirect} from 'next/navigation';
 import {safeReturn,validBearer} from '@/lib/auth-tokens.mjs';
+import {verifyOAuthBearer} from '@/lib/mcp-oauth.mjs';
 import {STANDALONE_COOKIE,standaloneConfigured,readStandaloneCookie} from '@/lib/standalone-auth.mjs';
 export type ChatGPTUser={userId:string;displayName:string;email:string;fullName:string|null};
 export async function getChatGPTUser():Promise<ChatGPTUser|null>{
@@ -8,7 +9,7 @@ export async function getChatGPTUser():Promise<ChatGPTUser|null>{
  if(!origin||!owner)return null;
  // Vercel has no trusted Sites identity headers. Only verified session credentials count.
  const h=await headers();
- if(await validBearer(h.get('authorization'),process.env.VORLEN_MCP_API_KEY))return {userId:owner,displayName:'Workspace owner',email:process.env.VORLEN_OWNER_EMAIL||'',fullName:null};
+ if(await verifyOAuthBearer(h.get('authorization'))||await validBearer(h.get('authorization'),process.env.VORLEN_MCP_API_KEY))return {userId:owner,displayName:'Workspace owner',email:process.env.VORLEN_OWNER_EMAIL||'',fullName:null};
  const jar=await cookies();
  if(!standaloneConfigured())return null;
  return readStandaloneCookie(jar.get(STANDALONE_COOKIE)?.value);

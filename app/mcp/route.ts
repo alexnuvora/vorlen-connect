@@ -1,10 +1,14 @@
 import { service } from '@/lib/server';
+import { getChatGPTUser } from '@/app/chatgpt-auth';
+import { ISSUER } from '@/lib/mcp-oauth.mjs';
 import { directTools as publicTools,resolveDirectTool as resolveTool } from '@/lib/direct-catalog.mjs';
 import { assertOrigin,boundedBody,fail } from '@/lib/security.mjs';
 import { publicError } from '@/lib/service.mjs';
 export const dynamic='force-dynamic';
 const json=(data:unknown,status=200)=>Response.json(data,{status,headers:{'Cache-Control':'private, no-store'}});
-export async function POST(req:Request){let id:string|number|null=null;try{
+export async function POST(req:Request){
+ if(!await getChatGPTUser())return new Response(JSON.stringify({error:'unauthorized'}),{status:401,headers:{'Content-Type':'application/json','WWW-Authenticate':`Bearer resource_metadata="${ISSUER}/.well-known/oauth-protected-resource"`,'Cache-Control':'no-store'}});
+ let id:string|number|null=null;try{
  assertOrigin(req);const body=await boundedBody(req);id=body.id??null;
  if(body.jsonrpc!=='2.0'||typeof body.method!=='string')return json({jsonrpc:'2.0',id,error:{code:-32600,message:'Invalid request'}},400);
  if(body.method==='notifications/initialized')return new Response(null,{status:202});
