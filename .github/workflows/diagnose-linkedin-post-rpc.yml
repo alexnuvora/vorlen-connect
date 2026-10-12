@@ -1,0 +1,23 @@
+name: Diagnose Vorlen LinkedIn post RPC
+on:
+  push:
+    branches: [fix/linkedin-post-rpc-400]
+    paths: ['.github/workflows/diagnose-linkedin-post-rpc.yml']
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Read-only diagnostic on exact Vorlen Connect database
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.VORLEN_CONNECT_SUPABASE_ACCESS_TOKEN }}
+        run: |
+          node --input-type=module <<'NODE'
+          const url='https://api.supabase.com/v1/projects/oulypjxpbrlxbjrxzryf/database/query';
+          const query="select public.vc_linkedin_post_control('list','nonexistent-readonly-diagnostic-owner','{}'::jsonb) as result";
+          const r=await fetch(url,{method:'POST',headers:{Authorization:'Bearer '+process.env.SUPABASE_ACCESS_TOKEN,'Content-Type':'application/json'},body:JSON.stringify({query,read_only:true})});
+          const response=await r.text();
+          console.log('HTTP '+r.status+'; response '+response.slice(0,1500));
+          if(!r.ok)process.exitCode=1;
+          NODE
