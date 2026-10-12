@@ -29,7 +29,7 @@ Canonical VM: `ubuntu@145.241.230.145`, hostname `vorlen`, instance OCID ending 
 `session-broker-release.yml` tests signatures/encryption and a disposable PostgreSQL state machine, applies the additive migration through Supabase CLI to `oulypjxpbrlxbjrxzryf`, audits grants, then deploys the worker with `VORLEN_WORKER_SSH_PRIVATE_KEY` from GitHub Secrets.
 Vercel deploys the Next.js API/UI/MCP from the repository. `VORLEN_SESSION_WORKER_PUBLIC_KEY` contains only the VM's Ed25519 public key. Never set a private key in that variable.
 
-The worker polls outbound HTTPS; it has no public listening port. One browser is active at a time on the 1 GB VM. Switching accounts can discard an in-progress verification challenge; reconnect that account if necessary.
+The worker polls outbound HTTPS; it has no public listening port. One browser is active at a time on the 1 GB VM. The deployment adds a dedicated 1 GB swap file only when no swap is active; browser smoke-test services have a hard runtime limit. Switching accounts can discard an in-progress verification challenge; reconnect that account if necessary.
 
 Runtime paths:
 - `/opt/vorlen-session/session_worker.py` and `vorlen-session.service`
@@ -47,3 +47,7 @@ Ed25519 signatures bind exact body bytes, a timestamp and a one-use nonce. Queue
 Audit events contain job operation/state only. Content results are encrypted and owner-scoped. Result bodies are bounded; pagination is capped at 25. The worker never automatically retries a LinkedIn write.
 
 The additive SQL migration does not modify post approval, scheduling or OAuth tables. For a rollback stop `vorlen-session.service`, disable the new UI/tools by reverting the application commit, and retain the queue for auditing uncertain outcomes. Do not drop or replay pending jobs casually.
+
+## Release verification (12 October 2026)
+
+The application build, 67 JavaScript tests, three Python vault tests and PostgreSQL queue/permission tests passed. The schema was applied through the configured GitHub Supabase CLI workflow. The Oracle service and sandboxed browser test passed in run 38216745439. Vercel rejected the production release with `api-deployments-free-per-day` (100 deployments/day); the new production UI/MCP and live account verification remain pending that quota reset or a user-approved plan change. No LinkedIn message or invitation was sent during testing.

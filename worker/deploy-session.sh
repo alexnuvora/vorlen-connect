@@ -10,7 +10,7 @@ print('Exact Vorlen VM verified')
 PY
 test -x /opt/vorlen-session-venv/bin/python
 # Bound smoke-test units and clean only previous Vorlen browser test units.
-for unit in $(sudo -n systemctl list-units --all --type=service 'run-*.service' --no-legend | awk '{print $1}'); do
+for unit in $(sudo -n systemctl list-units --all --type=service 'run-*.service' --plain --no-legend | awk '{print $1}'); do
   command=$(sudo -n systemctl show "$unit" -p ExecStart --value)
   if [[ "$command" == *'/opt/vorlen-session-venv/bin/python'* && "$command" == *'about:blank'* ]]; then
     sudo -n systemctl stop "$unit"
@@ -36,7 +36,7 @@ echo 'Installing session service'
 sudo systemctl daemon-reload
 sudo systemctl enable vorlen-session.service
 echo 'Starting session service'
-sudo timeout 60 systemctl restart vorlen-session.service
+sudo timeout --kill-after=5s 60 systemctl restart vorlen-session.service
 sudo systemctl is-active --quiet vorlen-session.service
 echo 'Testing browser under service privileges'
 # Same user/sandbox policy as the service, no account credentials involved.

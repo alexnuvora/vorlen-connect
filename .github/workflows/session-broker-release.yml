@@ -1,8 +1,8 @@
 name: Verify and deploy native session broker
 on:
   push:
-    branches: [feature/live-session-broker]
-    paths: ['worker/session_worker.py', 'worker/deploy-session.sh', 'worker/browser-smoke.py', 'worker/vorlen-session.service', 'supabase/migrations/20261012090000_session_broker_jobs.sql', 'tests/session-broker*', '.github/workflows/session-broker-release.yml']
+    branches: [main, feature/live-session-broker]
+    paths: ['worker/session_worker.py', 'worker/deploy-session.sh', 'worker/browser-smoke.py', 'worker/vorlen-session.service', 'supabase/migrations/20261012090000_session_broker_jobs.sql', 'tests/session-broker*', 'tests/session-worker-route.test.mjs', '.github/workflows/session-broker-release.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -25,8 +25,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: npm install --prefix /tmp/vorlen-test zod@3.25.76 && ln -s /tmp/vorlen-test/node_modules node_modules
-      - run: node --test tests/session-broker.test.mjs
+      - run: npm install --prefix /tmp/vorlen-test zod@3.25.76 typescript@5.9.3 && ln -s /tmp/vorlen-test/node_modules node_modules
+      - run: node --test tests/session-broker.test.mjs tests/session-worker-route.test.mjs
       - run: pip install cryptography==46.0.3 && python tests/session-broker-worker.py
       - name: Test isolated SQL state machine and permissions
         env:
