@@ -27,7 +27,7 @@ export default async function Login({searchParams}:{searchParams:Promise<{return
        <div className="vl-form-eyebrow">WELCOME BACK</div>
        <h2>Sign in to your workspace</h2>
        <p className="vl-subheading">Enter your details below to continue to Vorlen Connect.</p>
-       {p.error&&<div className="vl-error" role="alert">We couldn't sign you in. Please check your details and try again.</div>}
+       {p.error&&<div className="vl-error" role="alert">We could not sign you in. Please check your details and try again.</div>}
        <form method="post" action="/login/session">
          <input type="hidden" name="csrf" value={token}/>
          <input type="hidden" name="return_to" value={back}/>
