@@ -1,7 +1,7 @@
-name: Apply Vorlen Worker Queue Schema
+name: Apply Vorlen Session Foundation Schema
 on:
   push:
-    branches: [feature/oracle-worker-queue]
+    branches: [feature/session-integration-foundation]
     paths:
       - '.github/workflows/apply-worker-queue.yml'
   workflow_dispatch:
@@ -16,7 +16,7 @@ jobs:
       - uses: supabase/setup-cli@v1
         with:
           version: latest
-      - name: Apply queue migration to exact Vorlen project
+      - name: Apply session migration to exact Vorlen project
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.VORLEN_CONNECT_SUPABASE_ACCESS_TOKEN }}
           SUPABASE_DB_PASSWORD: ${{ secrets.VORLEN_CONNECT_SUPABASE_DB_PASSWORD }}
@@ -28,10 +28,10 @@ jobs:
           supabase link --project-ref oulypjxpbrlxbjrxzryf --password "$SUPABASE_DB_PASSWORD"
           supabase db push --linked
           node --input-type=module <<'NODE'
-          const query="select to_regclass('public.vc_worker_jobs') is not null as queue_present, (select relrowsecurity from pg_class where oid='public.vc_worker_jobs'::regclass) as rls_enabled, exists(select 1 from pg_proc where proname='vc_worker_claim' and pronamespace='public'::regnamespace) as claim_present, exists(select 1 from pg_proc where proname='vc_worker_finish' and pronamespace='public'::regnamespace) as finish_present";
+          const query="select to_regclass('public.vc_linkedin_session_connections') is not null as sessions_present, (select relrowsecurity from pg_class where oid='public.vc_linkedin_session_connections'::regclass) as rls_enabled, exists(select 1 from pg_proc where proname='vc_session_transition' and pronamespace='public'::regnamespace) as transition_present";
           const res=await fetch('https://api.supabase.com/v1/projects/oulypjxpbrlxbjrxzryf/database/query',{method:'POST',headers:{Authorization:'Bearer '+process.env.SUPABASE_ACCESS_TOKEN,'Content-Type':'application/json'},body:JSON.stringify({query,read_only:true})});
           if(!res.ok)throw Error('read-only audit failed: HTTP '+res.status);
           const body=await res.json();const row=Array.isArray(body)?body[0]:body?.result?.[0];
-          if(!row?.queue_present||!row?.rls_enabled||!row?.claim_present||!row?.finish_present)throw Error('Queue or policies absent');
-          console.log('PASS: target Vorlen queue table, RLS, claim RPC and finish RPC present');
+          if(!row?.sessions_present||!row?.rls_enabled||!row?.transition_present)throw Error('Session lifecycle schema absent');
+          console.log('PASS: Vorlen session connection table, RLS, transition RPC present');
           NODE
