@@ -10,6 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 4
     steps:
+      # Re-run after SSH repository secret was provisioned.
       - name: Check saved key and connect without altering instance
         shell: bash
         env:
