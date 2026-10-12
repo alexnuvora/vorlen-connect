@@ -1,0 +1,38 @@
+name: Inspect native session service
+on:
+  push:
+    branches: [feature/live-session-broker]
+    paths: ['.github/workflows/session-worker-check.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Read new VM service health without account data
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VORLEN_WORKER_SSH_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          umask 077
+          KEY="$(mktemp)"
+          trap 'rm -f "$KEY"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$KEY"
+          timeout 90 ssh -i "$KEY" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15 -o ServerAliveInterval=10 -o ServerAliveCountMax=2 ubuntu@145.241.230.145 'bash -se' <<'REMOTE'
+          test "$(hostname)" = vorlen
+          echo 'VM reached'
+          free -m
+          uptime
+          sudo -n timeout 15 systemctl show vorlen-session.service -p ActiveState -p SubState -p Result -p MainPID -p MemoryCurrent -p NRestarts
+          sudo -n timeout 15 systemctl list-jobs --no-pager
+          sudo -n python3 - <<'PY'
+          import pathlib,json
+          p=pathlib.Path('/var/lib/vorlen-session/status.json')
+          if p.exists():
+           d=json.loads(p.read_text());print({k:d.get(k) for k in ['version','last_poll','worker_api','browser_open']})
+          else: print('Status file not created yet')
+          PY
+          ps -eo pid,comm,rss --sort=-rss | head -12
+          REMOTE
