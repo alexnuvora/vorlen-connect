@@ -38,14 +38,14 @@ def main():
  for cid in ids:
   result=attempt('instances',lambda:all_items(compute.list_instances,cid))
   instances.extend(result or [])
-  result=attempt('block_volumes',lambda:all_items(volume.list_volumes,cid))
+  result=attempt('block_volumes',lambda:all_items(volume.list_volumes,compartment_id=cid))
   volumes.extend(result or [])
   result=attempt('volume_backups',lambda:all_items(volume.list_volume_backups,cid))
   backups.extend(result or [])
   result=attempt('boot_backups',lambda:all_items(volume.list_boot_volume_backups,cid))
   backups.extend(result or [])
   for ad in ads:
-   result=attempt('boot_volumes',lambda:all_items(volume.list_boot_volumes,ad.name,cid))
+   result=attempt('boot_volumes',lambda:all_items(volume.list_boot_volumes,availability_domain=ad.name,compartment_id=cid))
    volumes.extend(result or [])
  live=[i for i in instances if i.lifecycle_state not in ('TERMINATED','TERMINATING')]
  active_volumes=[v for v in volumes if v.lifecycle_state not in ('TERMINATED','TERMINATING')]
@@ -60,14 +60,21 @@ def main():
  # Cost data covers the tenancy; aggregation omits resource IDs and customer data.
  def costs():
   cost_cfg={**cfg,'region':home};client=oci.usage_api.UsageapiClient(cost_cfg,timeout=(10,40))
-  end=datetime.now(timezone.utc).replace(minute=0,second=0,microsecond=0)
+  end=datetime.now(timezone.utc).replace(hour=0,minute=0,second=0,microsecond=0)
   details=oci.usage_api.models.RequestSummarizedUsagesDetails(tenant_id=TENANCY,time_usage_started=end.replace(day=1,hour=0),time_usage_ended=end,granularity='DAILY',query_type='COST',group_by=['service'],is_aggregate_by_time=True)
   rows=all_items(client.request_summarized_usages,details)
   if hasattr(rows,'items') and not isinstance(rows,list):rows=rows.items
   emit('reported_month_to_date_cost',{'through_utc':end.isoformat(),'rows':[{'service':r.service,'amount':r.computed_amount,'currency':r.currency} for r in rows],'note':'Reported data may lag; this is not a real-time spending cap.'})
   if any((r.computed_amount or 0)>0 for r in rows):issues.append('Positive reported cost requires billing review')
  attempt('billing_access',costs)
- emit('account_payment_status',{'status':'not_verified','instruction':'Confirm the Oracle Console still identifies this as a Free Tier account, not Pay As You Go. Budgets are soft alerts, not hard caps.'})
+ def payment_status():
+  client=oci.osp_gateway.SubscriptionServiceClient({**cfg,'region':home},timeout=(10,25))
+  result=all_items(client.list_subscriptions,home,TENANCY,retry_strategy=oci.retry.NoneRetryStrategy())
+  rows=result.items if hasattr(result,'items') and not isinstance(result,list) else result
+  emit('account_payment_status',{'subscriptions':[{'plan_type':r.plan_type,'upgrade_state':r.upgrade_state,'is_intent_to_pay':r.is_intent_to_pay,'time_plan_upgrade':r.time_plan_upgrade} for r in rows]})
+  if not rows:issues.append('Account payment status could not be verified')
+  if any(r.plan_type!='FREE_TIER' for r in rows):issues.append('Account is not exclusively Free Tier; zero billing is not guaranteed')
+ attempt('account_payment_status',payment_status)
  emit('audit_summary',{'issues':issues,'resource_changes':False,'zero_bill_guaranteed':False})
  if issues:sys.exit(2)
 if __name__=='__main__':
