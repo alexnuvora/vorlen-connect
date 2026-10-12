@@ -1,0 +1,29 @@
+name: Diagnose Vorlen Oracle worker
+on:
+  workflow_dispatch:
+  push:
+    branches: [ops/oracle-worker-recovery]
+    paths:
+      - .github/workflows/oracle-worker-diagnostics.yml
+      - scripts/oracle-worker-diagnostics.py
+permissions:
+  contents: read
+concurrency:
+  group: vorlen-oracle-diagnostics
+  cancel-in-progress: false
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Oracle SDK
+        run: python -m pip install --disable-pip-version-check --quiet oci==2.187.2
+      - name: Inspect exact instance without changing it
+        env:
+          VORLEN_OCI_CONFIG: ${{ secrets.VORLEN_OCI_CONFIG }}
+          VORLEN_OCI_API_PRIVATE_KEY: ${{ secrets.VORLEN_OCI_API_PRIVATE_KEY }}
+        run: python scripts/oracle-worker-diagnostics.py
