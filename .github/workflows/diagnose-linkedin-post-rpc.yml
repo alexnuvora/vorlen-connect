@@ -1,23 +1,43 @@
-name: Diagnose Vorlen LinkedIn post RPC
+name: Fix Vorlen LinkedIn post RPC
 on:
   push:
     branches: [fix/linkedin-post-rpc-400]
-    paths: ['.github/workflows/diagnose-linkedin-post-rpc.yml']
+    paths:
+      - '.github/workflows/diagnose-linkedin-post-rpc.yml'
 permissions:
   contents: read
 jobs:
-  check:
+  fix-and-verify:
     runs-on: ubuntu-latest
+    timeout-minutes: 12
     steps:
-      - name: Read-only diagnostic on exact Vorlen Connect database
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Apply tracked LinkedIn list fix to Vorlen Connect only
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.VORLEN_CONNECT_SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.VORLEN_CONNECT_SUPABASE_DB_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "$SUPABASE_ACCESS_TOKEN"
+          test -n "$SUPABASE_DB_PASSWORD"
+          supabase link --project-ref oulypjxpbrlxbjrxzryf --password "$SUPABASE_DB_PASSWORD"
+          supabase db push --linked
+          supabase migration list --linked
+      - name: Verify list and preview RPC with readonly synthetic owner
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.VORLEN_CONNECT_SUPABASE_ACCESS_TOKEN }}
         run: |
           node --input-type=module <<'NODE'
-          const url='https://api.supabase.com/v1/projects/oulypjxpbrlxbjrxzryf/database/query';
-          const query="set role service_role; select public.vc_linkedin_post_control('list','nonexistent-readonly-diagnostic-owner','{}'::jsonb) as result";
-          const r=await fetch(url,{method:'POST',headers:{Authorization:'Bearer '+process.env.SUPABASE_ACCESS_TOKEN,'Content-Type':'application/json'},body:JSON.stringify({query})});
-          const response=await r.text();
-          console.log('HTTP '+r.status+'; response '+response.slice(0,1500));
-          if(!r.ok)process.exitCode=1;
+          const endpoint='https://api.supabase.com/v1/projects/oulypjxpbrlxbjrxzryf/database/query';
+          const headers={'Authorization':'Bearer '+process.env.SUPABASE_ACCESS_TOKEN,'Content-Type':'application/json'};
+          for (const action of ['list','get']) {
+            const query="set role service_role; select public.vc_linkedin_post_control('"+action+"','nonexistent-readonly-diagnostic-owner',"+(action==='get'?"'{\"draft_id\":\"00000000-0000-4000-8000-000000000000\"}'":"'{}'")+"::jsonb) as result";
+            const response=await fetch(endpoint,{method:'POST',headers,body:JSON.stringify({query})});
+            const data=await response.text();
+            if(!response.ok)throw Error('LinkedIn '+action+' RPC check failed: '+data.slice(0,1200));
+            console.log('LinkedIn '+action+' RPC returned HTTP 200 with synthetic owner');
+          }
           NODE
