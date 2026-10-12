@@ -1,0 +1,23 @@
+name: Inspect Chromium Installation State
+on:
+  push:
+    branches: [feature/interactive-browser-broker]
+    paths: ['.github/workflows/inspect-chromium-install.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Diagnose installation without changing VM
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VORLEN_WORKER_SSH_PRIVATE_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          KEY="$(mktemp)"
+          trap 'rm -f "$KEY"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$KEY"
+          ssh -i "$KEY" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=12 ubuntu@145.241.230.145 'set -e; echo HOST:$(hostname); free -h; df -h /; echo "PROCESSES"; ps -eo pid,etime,stat,comm --sort=-etime | grep -E "apt|snap|chromium" | head -20 || true; echo "SNAP STATUS"; snap list chromium 2>&1 || true; echo "BINARY"; command -v chromium || command -v chromium-browser || true; echo "SNAP CHANGES"; timeout 5 snap changes 2>&1 | tail -7 || true'
