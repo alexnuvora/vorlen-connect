@@ -9,6 +9,8 @@ import os
 from pathlib import Path
 import socket
 import tempfile
+import time
+import re
 
 import oci
 
@@ -46,6 +48,82 @@ def rules(items):
                      'tcp_options': oci.util.to_dict(getattr(r, 'tcp_options', None)),
                      'udp_options': oci.util.to_dict(getattr(r, 'udp_options', None))}
             for r in items]
+
+
+def console_signals(compute, instance):
+    """Capture console history without reboot; output only fixed diagnostic labels.
+
+    Temporary console resources created here are removed. Existing connections
+    are never disconnected. Raw console contents are never logged or uploaded.
+    """
+    created_connection = None
+    captured = None
+    try:
+        connections = compute.list_instance_console_connections(
+            instance.compartment_id, instance_id=INSTANCE).data
+        active = [c for c in connections if c.lifecycle_state == 'ACTIVE']
+        emit('console_connections', {'active_count': len(active)})
+        if not active:
+            from cryptography.hazmat.primitives.asymmetric import rsa
+            from cryptography.hazmat.primitives import serialization
+            key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+            public_key = key.public_key().public_bytes(
+                serialization.Encoding.OpenSSH, serialization.PublicFormat.OpenSSH).decode()
+            connection = compute.create_instance_console_connection(
+                oci.core.models.CreateInstanceConsoleConnectionDetails(
+                    instance_id=INSTANCE, public_key=public_key)).data
+            created_connection = connection.id
+            for _ in range(18):
+                connection = compute.get_instance_console_connection(created_connection).data
+                if connection.lifecycle_state == 'ACTIVE':
+                    break
+                if connection.lifecycle_state in ('FAILED', 'DELETED'):
+                    raise RuntimeError('Console unavailable')
+                time.sleep(5)
+            if connection.lifecycle_state != 'ACTIVE':
+                raise TimeoutError('Console did not activate')
+        captured = compute.capture_console_history(
+            oci.core.models.CaptureConsoleHistoryDetails(
+                instance_id=INSTANCE, display_name='vorlen-recovery-diagnostic')).data
+        for _ in range(18):
+            captured = compute.get_console_history(captured.id).data
+            if captured.lifecycle_state in ('SUCCEEDED', 'FAILED'):
+                break
+            time.sleep(5)
+        if captured.lifecycle_state != 'SUCCEEDED':
+            raise RuntimeError('Console capture unavailable')
+        body = compute.get_console_history_content(captured.id).data
+        if hasattr(body, 'content'):
+            body = body.content
+        if isinstance(body, bytes):
+            body = body.decode('utf-8', errors='replace')
+        if not isinstance(body, str):
+            raise TypeError('Unexpected console response')
+        signals = {
+            'out_of_memory': r'out of memory|oom-kill|oom_reaper',
+            'process_killed': r'Killed process \d+',
+            'kernel_panic': r'kernel panic',
+            'disk_full': r'no space left on device',
+            'filesystem_error': r'EXT4-fs error|I/O error|Buffer I/O error',
+            'emergency_mode': r'emergency mode',
+            'failed_service': r'Failed to start',
+            'login_prompt': r'login:',
+            'ssh_started': r'Started .*OpenBSD Secure Shell|Started .*ssh.service',
+            'cloud_init_finished': r'Cloud-init.*finished',
+            'network_unreachable': r'Network is unreachable',
+            'soft_lockup': r'soft lockup|blocked for more than \d+ seconds',
+        }
+        result = {'bytes_read': len(body.encode()), 'raw_console_published': False,
+                  'signals': {label: len(re.findall(pattern, body, re.I))
+                              for label, pattern in signals.items()},
+                  'recent_signals': {label: len(re.findall(pattern, body[-16384:], re.I))
+                                     for label, pattern in signals.items()}}
+        emit('console_signals', result)
+    finally:
+        if captured:
+            attempt('console_history_cleanup', lambda: compute.delete_console_history(captured.id))
+        if created_connection:
+            attempt('console_connection_cleanup', lambda: compute.delete_instance_console_connection(created_connection))
 
 
 def diagnose(config):
@@ -119,6 +197,7 @@ def diagnose(config):
         instance.availability_domain, instance.compartment_id, instance_id=INSTANCE).data)
     if disks is not None:
         emit('boot_volumes', [pick(d, 'id', 'boot_volume_id', 'lifecycle_state') for d in disks])
+    attempt('console_capture', lambda: console_signals(compute, instance))
     emit('diagnostic_complete', {'read_only': True, 'os_access_verified': False})
 
 
