@@ -1,24 +1,19 @@
 import {NextRequest} from 'next/server';
 import {VorlenService} from '@/lib/linkedin-service.mjs';
 import {SupabaseStore} from '@/lib/supabase-store.mjs';
-
+import {schedulerAuthorized,runLinkedInSchedule} from '@/lib/linkedin-scheduler.mjs';
 export const dynamic='force-dynamic';
-export async function GET(req:NextRequest){
- const secret=process.env.CRON_SECRET;
- if(!secret||req.headers.get('authorization')!=='Bearer '+secret)return new Response('Unauthorised',{status:401});
+export const maxDuration=300;
+export async function POST(req:NextRequest){
  const settings=process.env;
+ if(!schedulerAuthorized(req.headers.get('authorization'),settings.VORLEN_SCHEDULER_SECRET))return new Response('Unauthorised',{status:401,headers:{'Cache-Control':'no-store'}});
  const owner=settings.ZERNIO_OWNER_ID;
  if(!owner||!settings.CREDENTIAL_ENCRYPTION_KEY||!settings.SUPABASE_URL||!settings.SUPABASE_SERVICE_ROLE_KEY)return new Response('Scheduler not configured',{status:503});
- const svc=new VorlenService(new SupabaseStore(settings.SUPABASE_URL,settings.SUPABASE_SERVICE_ROLE_KEY,owner),owner,settings.CREDENTIAL_ENCRYPTION_KEY,fetch);
- const due=(await svc.postStore('due')).rows;
- const outcomes=[];
- for(const entry of due){
-  try{
-   const p=await svc.previewPost(entry.draft_id);
-   if(p.review_state!=='scheduled'||!p.scheduled_at||Date.parse(p.scheduled_at)>Date.now())continue;
-   const result=await svc.publishApprovedPost(p.draft_id,p.revision);
-   outcomes.push({draft_id:p.draft_id,status:result.status});
-  }catch{outcomes.push({draft_id:entry.draft_id,status:'failed_or_uncertain'});}
- }
- return Response.json({checked:due.length,processed:outcomes.length,outcomes},{headers:{'Cache-Control':'no-store'}});
+ try{
+  const svc=new VorlenService(new SupabaseStore(settings.SUPABASE_URL,settings.SUPABASE_SERVICE_ROLE_KEY,owner),owner,settings.CREDENTIAL_ENCRYPTION_KEY,settings,fetch);
+  const result=await runLinkedInSchedule(svc,{probe:req.nextUrl.searchParams.get('probe')==='1'});
+  return Response.json(result,{headers:{'Cache-Control':'no-store'}});
+ }catch{return Response.json({error:'Scheduler could not read its queue. No automatic retry of claimed posts.'},{status:503,headers:{'Cache-Control':'no-store'}});}
 }
+// Supabase Cron is the only scheduler; old Vercel GET triggers cannot publish.
+export async function GET(){return new Response('Use authenticated POST.',{status:405,headers:{Allow:'POST','Cache-Control':'no-store'}});}
