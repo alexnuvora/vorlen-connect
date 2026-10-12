@@ -10,7 +10,7 @@ export default function PasswordForm(){
  useEffect(()=>{
   const params=new URLSearchParams(window.location.hash.slice(1));
   const access=params.get('access_token');
-  if(params.get('type')==='recovery'&&access)setToken(access);
+  if(params.get('type')==='recovery'&&access)queueMicrotask(()=>setToken(access));
   window.history.replaceState(null,'',window.location.pathname);
  },[]);
  async function submit(e:React.FormEvent){
