@@ -1,0 +1,23 @@
+[Unit]
+Description=ScrapeGraphAI MCP (local only)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=scrapegraph-mcp
+Group=scrapegraph-mcp
+WorkingDirectory=/opt/scrapegraph-mcp
+EnvironmentFile=/etc/scrapegraph-mcp.env
+ExecStart=/opt/scrapegraph-mcp/.venv/bin/python /opt/scrapegraph-mcp/server.py
+Restart=on-failure
+RestartSec=10
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/scrapegraph-mcp
+MemoryMax=640M
+
+[Install]
+WantedBy=multi-user.target
