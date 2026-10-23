@@ -1,0 +1,38 @@
+name: Apply native LinkedIn jobs queue schema
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/20261023170000_native_linkedin_jobs_queue.sql'
+      - '.github/workflows/apply-native-jobs-queue.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Apply migration to the configured Vorlen Connect project
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.VORLEN_CONNECT_SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.VORLEN_CONNECT_SUPABASE_DB_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${SUPABASE_ACCESS_TOKEN:-}"
+          test -n "${SUPABASE_DB_PASSWORD:-}"
+          supabase link --project-ref oulypjxpbrlxbjrxzryf --password "$SUPABASE_DB_PASSWORD"
+          supabase db push --linked
+          node --input-type=module <<'NODE'
+          const query = "select exists(select 1 from pg_proc where proname='vc_native_jobs_control' and pronamespace='public'::regnamespace) as queue_control, exists(select 1 from pg_proc where proname='vc_worker_progress' and pronamespace='public'::regnamespace) as progress_control, exists(select 1 from pg_constraint where conname='vc_worker_jobs_kind_check') as queue_kind_constraint";
+          const res = await fetch('https://api.supabase.com/v1/projects/oulypjxpbrlxbjrxzryf/database/query', {method:'POST',headers:{Authorization:'Bearer '+process.env.SUPABASE_ACCESS_TOKEN,'Content-Type':'application/json'},body:JSON.stringify({query,read_only:true})});
+          if (!res.ok) throw Error('read-only schema audit failed: HTTP '+res.status);
+          const body=await res.json(); const row=Array.isArray(body)?body[0]:body?.result?.[0];
+          if (!row?.queue_control || !row?.progress_control || !row?.queue_kind_constraint) throw Error('Native jobs queue schema incomplete');
+          console.log('PASS: native jobs queue, incremental progress RPC and job-kind constraint present');
+          NODE
