@@ -1,0 +1,28 @@
+name: Vorlen owned jobs collector tests
+on:
+  push:
+    branches: [feature/owned-linkedin-public-jobs-20261023]
+  pull_request:
+    paths:
+      - 'lib/linkedin-public-collector.mjs'
+      - 'tests/linkedin-public-collector.test.mjs'
+      - '.github/workflows/jobs-parity.yml'
+  workflow_dispatch:
+jobs:
+  collector:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check syntax
+        run: node --check lib/linkedin-public-collector.mjs
+      - name: Run owned collector tests
+        run: node --test tests/linkedin-public-collector.test.mjs
+      - name: Verify field-by-field parity audit
+        run: node --test tests/job-parity.test.mjs
+      - name: Verify Apify normalization regression tests
+        run: node --test tests/job-intelligence.test.mjs
