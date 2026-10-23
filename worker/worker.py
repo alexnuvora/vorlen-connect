@@ -43,7 +43,7 @@ def main():
   if enabled:
    try:
     response=api('claim',worker_id='oracle-vorlen-1')
-    rows=response.get('rows',[]) if isinstance(response,dict) else []
+    rows=response if isinstance(response,list) else response.get('rows',[]) if isinstance(response,dict) else []
     if rows:
      job=rows[0];kind=job.get('kind')
      if kind=='linkedin_public_jobs':
