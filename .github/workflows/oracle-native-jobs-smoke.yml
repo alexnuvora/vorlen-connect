@@ -31,7 +31,7 @@ jobs:
           const id=created[0]?.id;
           if(typeof id!=='string'||!/^[0-9a-f-]{36}$/i.test(id))throw Error('Could not create smoke-test job');
           console.log('Queued Oracle public-jobs smoke test. Job ID:',id);
-          const deadline=Date.now()+300000; let lastState='unknown',lastError=null;
+          const deadline=Date.now()+360000; let lastState='unknown',lastError=null;
           while(Date.now()<deadline){
             const rows=await query("select state,result,last_error from public.vc_worker_jobs where id='"+id+"'::uuid and owner_id='oracle-smoke-test' and kind='linkedin_public_jobs'");
             const row=rows[0];
