@@ -4,7 +4,7 @@ import base64, hashlib, json, os, signal, time, urllib.request, uuid
 from cryptography.hazmat.primitives import serialization
 from datetime import datetime, timezone
 from pathlib import Path
-from native_jobs import run_job
+from native_jobs import claim_rows, run_job
 
 STOP=False
 def stop(_a,_b):
@@ -43,7 +43,7 @@ def main():
   if enabled:
    try:
     response=api('claim',worker_id='oracle-vorlen-1')
-    rows=response if isinstance(response,list) else response.get('rows',[]) if isinstance(response,dict) else []
+    rows=claim_rows(response)
     if rows:
      job=rows[0];kind=job.get('kind')
      if kind=='linkedin_public_jobs':
