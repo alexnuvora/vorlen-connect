@@ -12,6 +12,12 @@ from urllib.parse import urlsplit
 HOST = "https://www.linkedin.com"
 SEARCH = HOST + "/jobs-guest/jobs/api/seeMoreJobPostings/search"
 DETAIL = HOST + "/jobs-guest/jobs/api/jobPosting/"
+def claim_rows(response):
+ """Normalize the existing worker RPC response (list) and wrapped test responses."""
+ if isinstance(response, list): return response
+ if isinstance(response, dict) and isinstance(response.get("rows"), list): return response["rows"]
+ return []
+
 FIELD_NAMES = [
  "job_id","job_url","apply_url","job_title","search_keyword","company_name",
  "company_url","company_logo_url","location","time_posted","posted_date",
