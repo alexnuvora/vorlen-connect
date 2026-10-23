@@ -1,0 +1,50 @@
+name: Oracle native LinkedIn jobs live smoke test
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/oracle-native-jobs-smoke.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - name: Enqueue a bounded public jobs search and wait for Oracle results
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.VORLEN_CONNECT_SUPABASE_ACCESS_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${SUPABASE_ACCESS_TOKEN:-}"
+          node --input-type=module <<'NODE'
+          const endpoint='https://api.supabase.com/v1/projects/oulypjxpbrlxbjrxzryf/database/query';
+          const token=process.env.SUPABASE_ACCESS_TOKEN;
+          async function query(sql,readOnly=true){
+            const res=await fetch(endpoint,{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({query:sql,read_only:readOnly})});
+            if(!res.ok)throw Error('Supabase management query failed: HTTP '+res.status);
+            const body=await res.json();
+            return Array.isArray(body)?body:Array.isArray(body?.result)?body.result:[];
+          }
+          const created=await query("insert into public.vc_worker_jobs(owner_id,kind,payload,state,max_attempts,dedupe_key) values ('oracle-smoke-test','linkedin_public_jobs',jsonb_build_object('filters',jsonb_build_object('jobs_titles',jsonb_build_array('Software Engineer'),'cities',jsonb_build_array('Manchester'),'jobs_entries',10,'posted_within','Past Week'),'items','[]'::jsonb,'completed',0,'pages_fetched',0),'pending',1,'oracle-smoke-'||gen_random_uuid()::text) returning id::text as id",false);
+          const id=created[0]?.id;
+          if(typeof id!=='string'||!/^[0-9a-f-]{36}$/i.test(id))throw Error('Could not create smoke-test job');
+          console.log('Queued Oracle public-jobs smoke test. Job ID:',id);
+          const deadline=Date.now()+240000;
+          while(Date.now()<deadline){
+            const rows=await query("select state,result,last_error from public.vc_worker_jobs where id='"+id+"'::uuid and owner_id='oracle-smoke-test' and kind='linkedin_public_jobs'");
+            const row=rows[0];
+            if(!row)throw Error('Smoke-test job disappeared from queue');
+            if(row.state==='succeeded'){
+              const result=typeof row.result==='string'?JSON.parse(row.result):row.result;
+              console.log(JSON.stringify({state:row.state,returned:result?.returned,pages_fetched:result?.pages_fetched,complete:result?.complete,stop_reason:result?.stop_reason,detail_failures:result?.detail_failures?.length||0}));
+              if(!Array.isArray(result?.items)||result.items.length<1)throw Error('Oracle worker ran but did not return any jobs: '+String(result?.stop_reason||'empty result'));
+              console.log('PASS: Oracle worker fetched public LinkedIn jobs and persisted results.');
+              process.exit(0);
+            }
+            if(row.state==='failed')throw Error('Oracle worker failed: '+String(row.last_error||'unknown'));
+            await new Promise(resolve=>setTimeout(resolve,10000));
+          }
+          throw Error('Timed out waiting for Oracle worker; job remains queued or leased: '+id);
+          NODE
