@@ -30,7 +30,7 @@ jobs:
             echo "=== WORKER HEARTBEAT (no secrets) ==="
             sudo -n cat /var/lib/vorlen-worker/status.json
             echo "=== WORKER PROCESS ==="
-            ps -eo pid,etime,stat,wchan:24,cmd | grep "[w]orker.py" || true
+            ps -eo pid,etime,stat,%cpu,%mem,wchan:24,cmd | grep "[w]orker.py" || true
             echo "=== PUBLIC GUEST SEARCH CONNECTIVITY ==="
             curl --max-time 15 -sS -o /dev/null -w "PUBLIC_SEARCH_HTTP=%{http_code} BYTES=%{size_download}\n" "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=Software+Engineer&location=Manchester&start=0&f_TPR=604800" || true
             echo "=== WORKER SOCKETS ==="
