@@ -1,0 +1,26 @@
+name: Native Oracle jobs worker tests
+on:
+  pull_request:
+    paths:
+      - 'worker/**'
+      - 'tests/test_native_jobs.py'
+      - 'app/mcp/route.ts'
+      - 'app/api/worker/route.ts'
+      - 'supabase/migrations/*native_linkedin_jobs*'
+      - 'supabase/migrations/*native_jobs_lease*'
+      - '.github/workflows/native-oracle-jobs-tests.yml'
+permissions:
+  contents: read
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Syntax check
+        run: python -m py_compile worker/worker.py worker/native_jobs.py
+      - name: Parser regression tests
+        run: python -m unittest discover -s tests -p 'test_native_jobs.py' -v

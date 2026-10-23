@@ -1,7 +1,7 @@
 name: Deploy Vorlen Oracle Worker
 on:
   push:
-    branches: [feature/oracle-worker-queue]
+    branches: [main, feature/oracle-worker-queue]
     paths:
       - '.github/workflows/deploy-oracle-worker.yml'
       - 'worker/**'
@@ -18,7 +18,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Verify Python source
-        run: python3 -m py_compile worker/worker.py
+        run: python3 -m py_compile worker/worker.py worker/native_jobs.py
+      - name: Test public jobs parser
+        run: python3 -m unittest discover -s tests -p 'test_native_jobs.py' -v
       - name: Deploy isolated systemd service
         env:
           SSH_PRIVATE_KEY: ${{ secrets.VORLEN_WORKER_SSH_PRIVATE_KEY }}
@@ -34,7 +36,10 @@ jobs:
           SSH_OPTS=(-i "$KEY" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=12)
           HOST=ubuntu@145.241.230.145
           ssh "${SSH_OPTS[@]}" "$HOST" 'set -e; test "$(hostname)" = vorlen; test "$(id -u)" -ne 0; sudo -n true'
-          scp "${SSH_OPTS[@]}" worker/worker.py worker/vorlen-worker.service "$HOST:/tmp/"
+          printf 'VORLEN_WORKER_API_URL=%s\n' 'https://connect.vorlen.co.uk/api/worker' > worker.env
+          chmod 600 worker.env
+          scp "${SSH_OPTS[@]}" worker/worker.py worker/native_jobs.py worker/vorlen-worker.service worker.env "$HOST:/tmp/"
+          rm -f worker.env
           ssh "${SSH_OPTS[@]}" "$HOST" '
             set -eu
             sudo -n groupadd --system vorlen-worker 2>/dev/null || true
@@ -43,8 +48,11 @@ jobs:
             fi
             sudo -n install -d -o root -g root -m 0755 /opt/vorlen-worker
             sudo -n install -o root -g root -m 0644 /tmp/worker.py /opt/vorlen-worker/worker.py
+            sudo -n install -o root -g root -m 0644 /tmp/native_jobs.py /opt/vorlen-worker/native_jobs.py
+            sudo -n install -d -o root -g root -m 0700 /etc/vorlen-worker
+            sudo -n install -o root -g root -m 0600 /tmp/worker.env /etc/vorlen-worker/worker.env
             sudo -n install -o root -g root -m 0644 /tmp/vorlen-worker.service /etc/systemd/system/vorlen-worker.service
-            rm -f /tmp/worker.py /tmp/vorlen-worker.service
+            rm -f /tmp/worker.py /tmp/native_jobs.py /tmp/vorlen-worker.service /tmp/worker.env
             sudo -n systemctl daemon-reload
             sudo -n systemctl enable --now vorlen-worker
             sudo -n systemctl restart vorlen-worker
