@@ -4,6 +4,7 @@ on:
     branches: [main]
     paths:
       - 'supabase/migrations/20261023170000_native_linkedin_jobs_queue.sql'
+      - 'supabase/migrations/20261023170100_extend_native_jobs_lease.sql'
       - '.github/workflows/apply-native-jobs-queue.yml'
   workflow_dispatch:
 permissions:
