@@ -1,0 +1,50 @@
+name: Diagnose Oracle native jobs worker
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/oracle-worker-health.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Inspect worker service and signed API connectivity
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VORLEN_WORKER_SSH_PRIVATE_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          KEY="$(mktemp)"
+          trap 'rm -f "$KEY"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$KEY"
+          SSH_OPTS=(-i "$KEY" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=12)
+          HOST=ubuntu@145.241.230.145
+          ssh "${SSH_OPTS[@]}" "$HOST" '
+            set -eu
+            echo "=== SERVICE ==="
+            sudo -n systemctl show vorlen-worker -p ActiveState -p SubState -p NRestarts
+            echo "=== WORKER HEARTBEAT (no secrets) ==="
+            sudo -n cat /var/lib/vorlen-worker/status.json
+            echo "=== SIGNING KEY READABILITY ==="
+            if sudo -n -u vorlen-worker test -r /var/lib/vorlen-session/signing.pem; then echo readable; else echo NOT_READABLE; fi
+            echo "=== RECENT WORKER LOGS ==="
+            sudo -n journalctl -u vorlen-worker -n 35 --no-pager
+          '
+      - name: Inspect bounded smoke job state
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.VORLEN_CONNECT_SUPABASE_ACCESS_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          const token=process.env.SUPABASE_ACCESS_TOKEN;
+          const query="select state,last_error,result->>'returned' as returned,result->>'stop_reason' as stop_reason from public.vc_worker_jobs where id='c4672dc6-42e2-4a37-9273-1451c0b5cf61'::uuid and kind='linkedin_public_jobs'";
+          const res=await fetch('https://api.supabase.com/v1/projects/oulypjxpbrlxbjrxzryf/database/query',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({query,read_only:true})});
+          if(!res.ok)throw Error('queue diagnostic query failed: HTTP '+res.status);
+          const body=await res.json();const rows=Array.isArray(body)?body:Array.isArray(body?.result)?body.result:[];
+          console.log(JSON.stringify(rows.map(r=>({state:r.state,last_error:r.last_error,returned:r.returned,stop_reason:r.stop_reason}))));
+          NODE
