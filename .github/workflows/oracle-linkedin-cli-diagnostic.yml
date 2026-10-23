@@ -1,0 +1,50 @@
+name: Oracle LinkedIn CLI diagnostic
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/oracle-linkedin-cli-diagnostic.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  diagnostic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check public LinkedIn jobs source from Oracle (read only)
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VORLEN_WORKER_SSH_PRIVATE_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          KEY="$(mktemp)"
+          trap 'rm -f "$KEY"' EXIT
+          test -n "${SSH_PRIVATE_KEY:-}"
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$KEY"
+          ssh-keygen -y -P '' -f "$KEY" >/dev/null
+          timeout 90 ssh -i "$KEY" -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=12 ubuntu@145.241.230.145 'bash -se' <<'REMOTE'
+          set -euo pipefail
+          test "$(hostname)" = vorlen
+          URL='https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=Software%20Engineer&location=Manchester&start=0'
+          HTML="$(mktemp)"
+          HEADERS="$(mktemp)"
+          trap 'rm -f "$HTML" "$HEADERS"' EXIT
+          echo 'Running LinkedIn guest-jobs HTTP diagnostic from Oracle VM'
+          STATUS=$(curl -sS -L --max-redirs 2 --connect-timeout 8 --max-time 25 -H 'Accept: text/html' -D "$HEADERS" -o "$HTML" -w '%{http_code}' "$URL") || { echo 'curl connection error'; exit 1; }
+          echo "HTTP_STATUS=$STATUS"
+          echo "BODY_BYTES=$(wc -c < "$HTML")"
+          echo "CONTENT_TYPE=$(grep -im1 '^content-type:' "$HEADERS" | tr -d '\r' | cut -c1-100 || true)"
+          python3 - "$HTML" <<'PY'
+          import sys,re,html
+          data=open(sys.argv[1],encoding='utf-8',errors='replace').read()
+          ids=set(re.findall(r'urn:li:jobPosting:(\d+)', data))
+          ids.update(re.findall(r'/jobs/view/[^"\s<>]*?(\d{7,})',data))
+          print('JOB_IDS_FOUND='+str(len(ids)))
+          for cls in ['base-search-card__title','base-search-card__subtitle','job-search-card__location']:
+              print(cls+'_OCCURRENCES='+str(data.count(cls)))
+          print('APPLICANT_WORD_PRESENT='+str(bool(re.search(r'applicants?',data,re.I))).lower())
+          print('HIRING_BADGE_WORD_PRESENT='+str(bool(re.search(r'actively hiring|early applicant',data,re.I))).lower())
+          print('HTML_TITLE='+str(re.search(r'<title[^>]*>(.*?)</title>',data,re.I|re.S).group(1).strip()[:100] if re.search(r'<title[^>]*>(.*?)</title>',data,re.I|re.S) else 'none'))
+          PY
+          REMOTE
