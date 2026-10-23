@@ -14,7 +14,7 @@ def api(action, **values):
  url=os.environ['VORLEN_WORKER_API_URL']
  body=json.dumps({'action':action,**values},separators=(',',':'),ensure_ascii=False).encode()
  timestamp=str(int(time.time()*1000));nonce=str(uuid.uuid4())
- message=(timestamp+'\\n'+nonce+'\\n'+hashlib.sha256(body).hexdigest()).encode()
+ message=(timestamp+'\n'+nonce+'\n'+hashlib.sha256(body).hexdigest()).encode()
  key_path=Path('/var/lib/vorlen-session/signing.pem')
  signature=subprocess.run(['openssl','pkeyutl','-sign','-rawin','-inkey',str(key_path)],input=message,stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True,timeout=5).stdout
  headers={'Content-Type':'application/json','X-Vorlen-Timestamp':timestamp,'X-Vorlen-Nonce':nonce,'X-Vorlen-Signature':base64.b64encode(signature).decode()}
