@@ -24,7 +24,6 @@ jobs:
       - name: Deploy isolated systemd service
         env:
           SSH_PRIVATE_KEY: ${{ secrets.VORLEN_WORKER_SSH_PRIVATE_KEY }}
-          WORKER_API_TOKEN: ${{ secrets.VORLEN_WORKER_API_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
@@ -37,9 +36,7 @@ jobs:
           SSH_OPTS=(-i "$KEY" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=12)
           HOST=ubuntu@145.241.230.145
           ssh "${SSH_OPTS[@]}" "$HOST" 'set -e; test "$(hostname)" = vorlen; test "$(id -u)" -ne 0; sudo -n true'
-          test -n "${WORKER_API_TOKEN:-}"
-          test "${#WORKER_API_TOKEN}" -ge 32
-          printf 'VORLEN_WORKER_API_URL=%s\nVORLEN_WORKER_API_TOKEN=%s\n' 'https://connect.vorlen.co.uk/api/worker' "$WORKER_API_TOKEN" > worker.env
+          printf 'VORLEN_WORKER_API_URL=%s\n' 'https://connect.vorlen.co.uk/api/worker' > worker.env
           chmod 600 worker.env
           scp "${SSH_OPTS[@]}" worker/worker.py worker/native_jobs.py worker/vorlen-worker.service worker.env "$HOST:/tmp/"
           rm -f worker.env
