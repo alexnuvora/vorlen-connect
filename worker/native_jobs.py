@@ -7,6 +7,7 @@ from urllib.parse import urlencode, urljoin, urlparse
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
 import json, re, time
+from urllib.parse import urlsplit
 
 HOST = "https://www.linkedin.com"
 SEARCH = HOST + "/jobs-guest/jobs/api/seeMoreJobPostings/search"
@@ -73,11 +74,13 @@ def first_text(dom,classes,node=None):
  return None
 
 def request_text(url):
- req=Request(url,headers={"Accept":"text/html","User-Agent":"Mozilla/5.0 (compatible; VorlenPublicJobs/1.0; +https://vorlen.co.uk)","Accept-Language":"en-GB,en;q=0.8"})
+ req=Request(url,headers={"Accept":"text/html","Accept-Encoding":"identity","Connection":"close","User-Agent":"Mozilla/5.0 (compatible; VorlenPublicJobs/1.0; +https://vorlen.co.uk)","Accept-Language":"en-GB,en;q=0.8"})
+ print("collector request start",urlsplit(url).path,flush=True)
  try:
   with urlopen(req,timeout=15) as r:
    if r.status!=200: raise RuntimeError("SOURCE_HTTP_"+str(r.status))
    raw=r.read(2_000_000)
+   print("collector response",urlsplit(url).path,"status",r.status,"bytes",len(raw),flush=True)
    return raw.decode("utf-8","replace")
  except HTTPError as e:
   if e.code in (403,429):raise RuntimeError("SOURCE_ACCESS_RESTRICTED_HTTP_"+str(e.code))
@@ -171,7 +174,10 @@ def run_job(filters, progress):
     if len(found)>=limit:break
     params={"keywords":title,"location":city,"start":str(start)}
     if posted:params["f_TPR"]=posted
-    try:cards=parse_cards(request_text(SEARCH+"?"+urlencode(params)),title);pages+=1
+    try:
+     print("collector search page start","offset",start,flush=True)
+     cards=parse_cards(request_text(SEARCH+"?"+urlencode(params)),title);pages+=1
+     print("collector search page parsed","offset",start,"cards",len(cards),flush=True)
     except Exception as e:
      stop_reason=str(e)[:160];break
     if not cards:break
@@ -182,14 +188,17 @@ def run_job(filters, progress):
      new+=1
      try:
       time.sleep(0.8)
+      print("collector detail start",card["job_id"],flush=True)
       detail=request_text(DETAIL+card["job_id"])
       item=parse_detail(detail,card)
+      print("collector detail parsed",card["job_id"],"description_chars",len(item.get("job_description") or ""),flush=True)
       found[card["job_id"]]=item
      except Exception as e:
       if "SOURCE_ACCESS_RESTRICTED" in str(e):
        stop_reason=str(e)[:160];break
       failures.append({"job_id":card["job_id"],"reason":str(e)[:160]})
       found[card["job_id"]]=card
+     print("collector progress save","returned",len(found),flush=True)
      progress({"items":list(found.values()),"returned":len(found),"completed":len(found),"pages_fetched":pages,"detail_failures":failures,"complete":False,"stop_reason":stop_reason})
     if stop_reason or not new:break
    if stop_reason or len(found)>=limit:break

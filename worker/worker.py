@@ -12,6 +12,7 @@ def stop(_a,_b):
  STOP=True
 
 def api(action, **values):
+ print('worker api start',action,flush=True)
  url=os.environ['VORLEN_WORKER_API_URL']
  body=json.dumps({'action':action,**values},separators=(',',':'),ensure_ascii=False).encode()
  timestamp=str(int(time.time()*1000));nonce=str(uuid.uuid4())
@@ -21,7 +22,10 @@ def api(action, **values):
  signature=key.sign(message)
  headers={'Content-Type':'application/json','X-Vorlen-Timestamp':timestamp,'X-Vorlen-Nonce':nonce,'X-Vorlen-Signature':base64.b64encode(signature).decode()}
  req=urllib.request.Request(url,data=body,headers=headers,method='POST')
- with urllib.request.urlopen(req,timeout=20) as response:return json.load(response)['data']
+ with urllib.request.urlopen(req,timeout=20) as response:
+  result=json.load(response)['data']
+  print('worker api complete',action,flush=True)
+  return result
 
 def heartbeat(path,mode,detail=None):
  d={'service':'vorlen-worker','mode':mode,'ready':True,'linkedin_actions_enabled':False,'public_jobs_collection_enabled':mode=='queue','last_heartbeat_utc':datetime.now(timezone.utc).isoformat(),'pid':os.getpid(),'detail':detail}
@@ -45,6 +49,7 @@ def main():
      if kind=='linkedin_public_jobs':
       payload=job.get('payload') or {};filters=payload.get('filters') or {}
       def save(result):
+       print('worker save progress',result.get('returned',0),flush=True)
        ok=api('progress',id=job['id'],lease_token=job['lease_token'],result=result)
        if ok is False:raise RuntimeError('lease expired while saving progress')
       result=run_job(filters,save)
