@@ -33,7 +33,7 @@ export async function POST(request: Request) {
  if(input.action!=='claim'&&(!/^[0-9a-f-]{36}$/i.test(input.id||'')||!/^[0-9a-f-]{36}$/i.test(input.lease_token||'')||(input.action==='finish'&&typeof input.success!=='boolean')))return json({error:'invalid lease'},400);
  try{
   const res=await fetch(url+'/rest/v1/rpc/'+path,{method:'POST',headers:{apikey:key,Authorization:'Bearer '+key,'Content-Type':'application/json'},body:JSON.stringify(params),cache:'no-store',signal:AbortSignal.timeout(15000),redirect:'error'});
-  if(!res.ok)return json({error:'queue unavailable'},{status:502} as never);
+  if(!res.ok)return json({error:'queue unavailable'},502);
   return json({data:await res.json()});
  }catch{return json({error:'queue unavailable'},503);}
 }
