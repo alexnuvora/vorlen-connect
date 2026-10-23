@@ -194,6 +194,7 @@ def run_job(filters, progress):
     if stop_reason or not new:break
    if stop_reason or len(found)>=limit:break
   if stop_reason or len(found)>=limit:break
- result={"items":list(found.values()),"returned":len(found),"completed":len(found),"pages_fetched":pages,"detail_failures":failures,"complete":stop_reason is None and len(found)>=limit,"stop_reason":stop_reason,"field_names":FIELD_NAMES,"source":"vorlen_owned_public_linkedin","apify_dependency":False}
+ if stop_reason is None and len(found)<limit: stop_reason="SOURCE_EXHAUSTED"
+ result={"items":list(found.values()),"returned":len(found),"completed":len(found),"pages_fetched":pages,"detail_failures":failures,"complete":stop_reason in (None,"SOURCE_EXHAUSTED"),"stop_reason":stop_reason,"field_names":FIELD_NAMES,"source":"vorlen_owned_public_linkedin","apify_dependency":False}
  progress(result)
  return result
