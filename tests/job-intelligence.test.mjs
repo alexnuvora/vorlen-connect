@@ -32,3 +32,19 @@ test('incomplete runs do not invent result entries',async()=>{
  const data=await getJobResults({run_id:'abc123'},{token:'secret',fetcher:async()=>({ok:true,json:async()=>({data:{status:'RUNNING'}})})});
  assert.equal(data.complete,false);assert.deepEqual(data.items,[]);
 });
+
+test('real actor output formats: Actively Hiring, early applicant, formatted counts',()=>{
+ const records=[
+  {job_id:'tesco',num_applicants:'29 applicants',hiring_badge:'Actively Hiring',is_actively_hiring:true,time_posted:'17 hours ago'},
+  {job_id:'xe',num_applicants:'Be among the first 25 applicants',hiring_badge:'Be an early applicant',is_actively_hiring:false,time_posted:'13 hours ago'},
+  {job_id:'tesco-tech',num_applicants:'27 applicants',hiring_badge:'Actively Hiring',is_actively_hiring:true,time_posted:'17 hours ago'},
+  {job_id:'new',num_applicants:'2 applicants',hiring_badge:'Actively Hiring',is_actively_hiring:true,time_posted:'1 minute ago'},
+  {job_id:'many',num_applicants:'1,203 applicants',hiring_badge:'Actively Hiring',is_actively_hiring:true,time_posted:'2 hours ago'}
+ ];
+ assert.equal(normalizeJob(records[0]).num_applicants,29);
+ assert.equal(normalizeJob(records[1]).num_applicants,null);
+ assert.equal(normalizeJob(records[1]).hiring_badge,false);
+ assert.equal(normalizeJob(records[4]).num_applicants,1203);
+ assert.deepEqual(filterJobs(records,{hiring_badge_required:true,max_applicants:2,max_age_minutes:1}).map(x=>x.job_id),['new']);
+ assert.deepEqual(filterJobs(records,{hiring_badge_required:true,max_applicants:30}).map(x=>x.job_id),['tesco','tesco-tech','new']);
+});
