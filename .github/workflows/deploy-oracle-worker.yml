@@ -1,7 +1,7 @@
 name: Deploy Vorlen Oracle Worker
 on:
   push:
-    branches: [main, feature/oracle-worker-queue, feat/oracle-native-linkedin-jobs-20261023]
+    branches: [main, feature/oracle-worker-queue]
     paths:
       - '.github/workflows/deploy-oracle-worker.yml'
       - 'worker/**'
@@ -19,6 +19,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Verify Python source
         run: python3 -m py_compile worker/worker.py worker/native_jobs.py
+      - name: Test public jobs parser
+        run: python3 -m unittest discover -s tests -p 'test_native_jobs.py' -v
       - name: Deploy isolated systemd service
         env:
           SSH_PRIVATE_KEY: ${{ secrets.VORLEN_WORKER_SSH_PRIVATE_KEY }}
