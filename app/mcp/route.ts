@@ -1,5 +1,5 @@
 import { jobTools } from '@/lib/job-tools.mjs';
-import { startJobSearch, getJobResults } from '@/lib/job-intelligence.mjs';
+import { startNativeSearch, getNativeResults } from '@/lib/native-jobs.mjs';
 import { service } from '@/lib/server';
 import { getChatGPTUser } from '@/app/chatgpt-auth';
 import { ISSUER } from '@/lib/mcp-oauth.mjs';
@@ -27,8 +27,8 @@ export async function POST(req:Request){
    try{
      const args=body.params?.arguments||{};
      const data=body.params.name==='vorlen_connect_jobs_start'
-       ?await startJobSearch(args,{token:process.env.APIFY_API_TOKEN})
-       :await getJobResults(args,{token:process.env.APIFY_API_TOKEN});
+       ?await startNativeSearch(args)
+       :await getNativeResults(args);
      result={content:[{type:'text',text:JSON.stringify(data)}],isError:false};
    }catch(e){const r=publicError(e);result={content:[{type:'text',text:JSON.stringify({error:r.error,message:String((e as Error)?.message||'Job provider request failed')})}],isError:true};}
  }else{let resolved;try{resolved=resolveTool(body.params?.name,body.params?.arguments||{});}catch{fail('UNKNOWN_TOOL','Unknown tool.',404);}
