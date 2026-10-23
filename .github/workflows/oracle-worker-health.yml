@@ -46,5 +46,6 @@ jobs:
           const res=await fetch('https://api.supabase.com/v1/projects/oulypjxpbrlxbjrxzryf/database/query',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({query,read_only:true})});
           if(!res.ok)throw Error('queue diagnostic query failed: HTTP '+res.status);
           const body=await res.json();const rows=Array.isArray(body)?body:Array.isArray(body?.result)?body.result:[];
+          console.log('diagnostic_version','v2');
           console.log(JSON.stringify(rows.map(r=>({state:r.state,last_error:r.last_error,returned:r.returned,stop_reason:r.stop_reason}))));
           NODE
