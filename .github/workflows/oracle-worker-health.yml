@@ -42,7 +42,7 @@ jobs:
           set -euo pipefail
           node --input-type=module <<'NODE'
           const token=process.env.SUPABASE_ACCESS_TOKEN;
-          const query="select state,last_error,result->>'returned' as returned,result->>'stop_reason' as stop_reason from public.vc_worker_jobs where id='c4672dc6-42e2-4a37-9273-1451c0b5cf61'::uuid and kind='linkedin_public_jobs'";
+          const query="select state,last_error,result->>'returned' as returned,result->>'stop_reason' as stop_reason from public.vc_worker_jobs where owner_id='oracle-smoke-test' and kind='linkedin_public_jobs' order by created_at desc limit 1";
           const res=await fetch('https://api.supabase.com/v1/projects/oulypjxpbrlxbjrxzryf/database/query',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({query,read_only:true})});
           if(!res.ok)throw Error('queue diagnostic query failed: HTTP '+res.status);
           const body=await res.json();const rows=Array.isArray(body)?body:Array.isArray(body?.result)?body.result:[];
