@@ -31,8 +31,8 @@ export async function POST(req:Request){
      if(body.params.name==='vorlen_connect_jobs_native'){
        const {action,...filters}=args;
        const url=process.env.SUPABASE_URL,key=process.env.SUPABASE_SERVICE_ROLE_KEY;
-       if(!url||!key)fail('SERVER_CONFIGURATION','Native jobs queue is not configured.',503);
-       const supabaseUrl:string=url,serviceKey:string=key;
+       if(typeof url!=='string'||typeof key!=='string')throw new Error('Native jobs queue is not configured.');
+       const supabaseUrl=url,serviceKey=key;
        const callQueue=async(op:string,p:Record<string,unknown>)=>{
          const response=await fetch(supabaseUrl+'/rest/v1/rpc/vc_native_jobs_control',{method:'POST',headers:{apikey:serviceKey,Authorization:'Bearer '+serviceKey,'Content-Type':'application/json'},body:JSON.stringify({p_action:op,p_owner:user!.userId,p}),cache:'no-store',signal:AbortSignal.timeout(12000),redirect:'error'});
          if(!response.ok)throw Error('NATIVE_JOBS_QUEUE_HTTP_'+response.status);
