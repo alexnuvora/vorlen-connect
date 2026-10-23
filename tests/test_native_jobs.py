@@ -2,9 +2,16 @@ import sys
 import unittest
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "worker"))
-from native_jobs import parse_cards, parse_detail
+from native_jobs import claim_rows, parse_cards, parse_detail
 
 class NativeJobsParserTests(unittest.TestCase):
+    def test_claim_response_supports_rpc_list_shape_and_wrapped_shape(self):
+        row = {"id":"job-id","kind":"linkedin_public_jobs"}
+        self.assertEqual(claim_rows([row]), [row])
+        self.assertEqual(claim_rows({"rows":[row]}), [row])
+        self.assertEqual(claim_rows({"rows":None}), [])
+        self.assertEqual(claim_rows(None), [])
+
     def test_card_extracts_job_id_company_title_and_location(self):
         html = """<ul><li><div class="base-card"><a href="/jobs/view/software-engineer-at-example-1234567890"><div class="base-search-card__title">Software Engineer</div></a><a href="/company/example"><h4 class="base-search-card__subtitle">Example Ltd</h4></a><div class="job-search-card__location">Manchester, England</div><time datetime="2026-10-23">2 hours ago</time></div></li></ul>"""
         jobs = parse_cards(html, "Software Engineer")
