@@ -22,5 +22,7 @@ jobs:
         run: node --check lib/linkedin-public-collector.mjs
       - name: Run owned collector tests
         run: node --test tests/linkedin-public-collector.test.mjs
+      - name: Verify field-by-field parity audit
+        run: node --test tests/job-parity.test.mjs
       - name: Verify Apify normalization regression tests
         run: node --test tests/job-intelligence.test.mjs
