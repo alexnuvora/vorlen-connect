@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Vorlen restricted queue worker. Public LinkedIn jobs only; no account automation."""
-import base64, hashlib, json, os, signal, subprocess, time, urllib.request, uuid
+import base64, hashlib, json, os, signal, time, urllib.request, uuid
+from cryptography.hazmat.primitives import serialization
 from datetime import datetime, timezone
 from pathlib import Path
 from native_jobs import run_job
@@ -16,7 +17,8 @@ def api(action, **values):
  timestamp=str(int(time.time()*1000));nonce=str(uuid.uuid4())
  message=(timestamp+'\n'+nonce+'\n'+hashlib.sha256(body).hexdigest()).encode()
  key_path=Path('/var/lib/vorlen-session/signing.pem')
- signature=subprocess.run(['openssl','pkeyutl','-sign','-rawin','-inkey',str(key_path)],input=message,stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True,timeout=5).stdout
+ key=serialization.load_pem_private_key(key_path.read_bytes(),password=None)
+ signature=key.sign(message)
  headers={'Content-Type':'application/json','X-Vorlen-Timestamp':timestamp,'X-Vorlen-Nonce':nonce,'X-Vorlen-Signature':base64.b64encode(signature).decode()}
  req=urllib.request.Request(url,data=body,headers=headers,method='POST')
  with urllib.request.urlopen(req,timeout=20) as response:return json.load(response)['data']
