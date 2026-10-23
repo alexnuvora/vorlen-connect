@@ -40,3 +40,13 @@ test('guest search paginates with start=10, deduplicates and preserves full outp
  assert.equal(urls.filter(x=>x.includes('start=10')).length,1);
  assert.equal(urls.filter(x=>x.includes('jobPosting')).length,2);
 });
+
+test('regressions: preserve multi-paragraph descriptions, attribute order and qualified applicant counts',()=>{
+ const html='<div class="show-more-less-html__markup"><p>First paragraph.</p><p>Second paragraph includes contact@example.co.uk.</p></div><a href="/company/example-ltd" class="topcard__org-name-link">Example Ltd</a><div>Over 200 applicants</div>';
+ const j=parseDetail(html,parseSearch(card)[0]);
+ assert.match(j.job_description,/First paragraph/);
+ assert.match(j.job_description,/Second paragraph includes contact@example.co.uk/);
+ assert.equal(j.contact_email,'contact@example.co.uk');
+ assert.equal(j.company_url,'https://www.linkedin.com/company/example-ltd');
+ assert.equal(j.num_applicants,'Over 200 applicants');
+});
