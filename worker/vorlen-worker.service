@@ -7,7 +7,7 @@ Type=simple
 User=vorlen-worker
 Group=vorlen-worker
 WorkingDirectory=/opt/vorlen-worker
-ExecStart=/usr/bin/python3 /opt/vorlen-worker/worker.py
+ExecStart=/opt/vorlen-session-venv/bin/python /opt/vorlen-worker/worker.py
 EnvironmentFile=-/etc/vorlen-worker/worker.env
 Environment=PYTHONDONTWRITEBYTECODE=1
 Environment=VORLEN_WORKER_STATE_DIR=/var/lib/vorlen-worker
