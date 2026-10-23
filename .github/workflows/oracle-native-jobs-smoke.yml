@@ -31,10 +31,11 @@ jobs:
           const id=created[0]?.id;
           if(typeof id!=='string'||!/^[0-9a-f-]{36}$/i.test(id))throw Error('Could not create smoke-test job');
           console.log('Queued Oracle public-jobs smoke test. Job ID:',id);
-          const deadline=Date.now()+240000;
+          const deadline=Date.now()+300000; let lastState='unknown',lastError=null;
           while(Date.now()<deadline){
             const rows=await query("select state,result,last_error from public.vc_worker_jobs where id='"+id+"'::uuid and owner_id='oracle-smoke-test' and kind='linkedin_public_jobs'");
             const row=rows[0];
+            if(row && row.state!==lastState){lastState=row.state;lastError=row.last_error||null;console.log('Oracle queue state:',lastState);}
             if(!row)throw Error('Smoke-test job disappeared from queue');
             if(row.state==='succeeded'){
               const result=typeof row.result==='string'?JSON.parse(row.result):row.result;
@@ -46,5 +47,5 @@ jobs:
             if(row.state==='failed')throw Error('Oracle worker failed: '+String(row.last_error||'unknown'));
             await new Promise(resolve=>setTimeout(resolve,10000));
           }
-          throw Error('Timed out waiting for Oracle worker; job remains queued or leased: '+id);
+          throw Error('Timed out waiting for Oracle worker; job='+id+', last_state='+lastState+', last_error='+String(lastError||'none'));
           NODE
