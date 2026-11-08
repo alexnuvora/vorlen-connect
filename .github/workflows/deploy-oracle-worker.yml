@@ -5,6 +5,7 @@ on:
     paths:
       - '.github/workflows/deploy-oracle-worker.yml'
       - 'worker/**'
+      - 'tests/test_open_to_work.py'
   workflow_dispatch:
 permissions:
   contents: read
@@ -17,10 +18,15 @@ jobs:
     timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
+      - name: Install image detector test dependency
+        run: python3 -m pip install --disable-pip-version-check Pillow
       - name: Verify Python source
-        run: python3 -m py_compile worker/worker.py worker/native_jobs.py
+        run: python3 -m py_compile worker/worker.py worker/native_jobs.py worker/open_to_work.py
       - name: Test public jobs parser
         run: python3 -m unittest discover -s tests -p 'test_native_jobs.py' -v
+      - name: Test Open to Work detector
+        working-directory: worker
+        run: PYTHONPATH=. python3 -m unittest discover -s ../tests -p 'test_open_to_work.py' -v
       - name: Deploy isolated systemd service
         env:
           SSH_PRIVATE_KEY: ${{ secrets.VORLEN_WORKER_SSH_PRIVATE_KEY }}
@@ -31,14 +37,14 @@ jobs:
           KEY="$(mktemp)"
           trap 'rm -f "$KEY"' EXIT
           test -n "${SSH_PRIVATE_KEY:-}"
-          printf '%s\n' "$SSH_PRIVATE_KEY" > "$KEY"
+          printf '%s\\n' "$SSH_PRIVATE_KEY" > "$KEY"
           ssh-keygen -y -P '' -f "$KEY" > /dev/null
           SSH_OPTS=(-i "$KEY" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=12)
           HOST=ubuntu@145.241.230.145
           ssh "${SSH_OPTS[@]}" "$HOST" 'set -e; test "$(hostname)" = vorlen; test "$(id -u)" -ne 0; sudo -n true'
-          printf 'VORLEN_WORKER_API_URL=%s\n' 'https://connect.vorlen.co.uk/api/worker' > worker.env
+          printf 'VORLEN_WORKER_API_URL=%s\\n' 'https://connect.vorlen.co.uk/api/worker' > worker.env
           chmod 600 worker.env
-          scp "${SSH_OPTS[@]}" worker/worker.py worker/native_jobs.py worker/vorlen-worker.service worker.env "$HOST:/tmp/"
+          scp "${SSH_OPTS[@]}" worker/worker.py worker/native_jobs.py worker/open_to_work.py worker/vorlen-worker.service worker.env "$HOST:/tmp/"
           rm -f worker.env
           ssh "${SSH_OPTS[@]}" "$HOST" '
             set -eu
@@ -49,15 +55,16 @@ jobs:
             sudo -n install -d -o root -g root -m 0755 /opt/vorlen-worker
             sudo -n install -o root -g root -m 0644 /tmp/worker.py /opt/vorlen-worker/worker.py
             sudo -n install -o root -g root -m 0644 /tmp/native_jobs.py /opt/vorlen-worker/native_jobs.py
+            sudo -n install -o root -g root -m 0644 /tmp/open_to_work.py /opt/vorlen-worker/open_to_work.py
             sudo -n install -d -o root -g root -m 0700 /etc/vorlen-worker
             sudo -n install -o root -g root -m 0600 /tmp/worker.env /etc/vorlen-worker/worker.env
             sudo -n install -o root -g root -m 0644 /tmp/vorlen-worker.service /etc/systemd/system/vorlen-worker.service
-            rm -f /tmp/worker.py /tmp/native_jobs.py /tmp/vorlen-worker.service /tmp/worker.env
+            rm -f /tmp/worker.py /tmp/native_jobs.py /tmp/open_to_work.py /tmp/vorlen-worker.service /tmp/worker.env
             sudo -n systemctl daemon-reload
             sudo -n systemctl enable --now vorlen-worker
             sudo -n systemctl restart vorlen-worker
             sleep 3
             sudo -n systemctl is-active --quiet vorlen-worker
             sudo -n systemctl is-enabled --quiet vorlen-worker
-            sudo -n python3 -c '"'"'import json,pathlib; p=pathlib.Path("/var/lib/vorlen-worker/status.json"); d=json.loads(p.read_text()); assert d["mode"] in ("standby","queue") and d["ready"] and not d["linkedin_actions_enabled"]; print("WORKER VERIFIED",d["service"],d["mode"],d["last_heartbeat_utc"])'"'"'
+            sudo -n python3 -c 'import json,pathlib; p=pathlib.Path("/var/lib/vorlen-worker/status.json"); d=json.loads(p.read_text()); assert d["mode"] in ("standby","queue") and d["ready"] and not d["linkedin_actions_enabled"]; print("WORKER VERIFIED",d["service"],d["mode"],d["last_heartbeat_utc"])'
           '
