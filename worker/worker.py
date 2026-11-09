@@ -42,6 +42,7 @@ def main():
  while not STOP:
   detail=None
   if enabled:
+   job=None
    try:
     response=api('claim',worker_id='oracle-vorlen-1')
     rows=claim_rows(response)
@@ -74,6 +75,9 @@ def main():
    except Exception as e:
     detail='queue/job error: '+type(e).__name__
     print(detail,flush=True)
+    if isinstance(job,dict) and job.get('id') and job.get('lease_token'):
+     try: api('finish',id=job['id'],lease_token=job['lease_token'],success=False,error=type(e).__name__)
+     except Exception as finish_error: print('worker failure completion unconfirmed: '+type(finish_error).__name__,flush=True)
   heartbeat(path,mode,detail)
   for _ in range(5):
    if STOP:break
