@@ -127,7 +127,7 @@ def run_candidate_search(filters, progress):
     if not role: raise ValueError("ROLE_REQUIRED")
     if not location: raise ValueError("LOCATION_REQUIRED")
     limit=max(1,min(MAX_RESULTS,int(filters.get("limit") or 10)))
-    query=f'site:linkedin.com/in "{role}" "{location}" ("open to work" OR "#opentowork")'
+    query=f'site:linkedin.com/in "{role}" "{location}"'
     links=search_web(query,limit*2)
     candidates=[];seen=set();failures=[];scanned=0;unverified=0
     for hit in links:
