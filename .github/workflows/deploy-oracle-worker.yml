@@ -41,7 +41,7 @@ jobs:
           KEY="$(mktemp)"
           trap 'rm -f "$KEY"' EXIT
           test -n "${SSH_PRIVATE_KEY:-}"
-          printf '%s\\n' "$SSH_PRIVATE_KEY" > "$KEY"
+          printf '%b' "$SSH_PRIVATE_KEY" | tr -d '\\r' > "$KEY"
           ssh-keygen -y -P '' -f "$KEY" > /dev/null
           SSH_OPTS=(-i "$KEY" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=12)
           HOST=ubuntu@145.241.230.145
