@@ -1,0 +1,36 @@
+name: Candidate pipeline code checks
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'lib/direct-catalog.mjs'
+      - 'lib/supabase-store.mjs'
+      - 'lib/linkedin-service.mjs'
+      - 'worker/public_candidates.py'
+      - 'worker/open_to_work.py'
+      - 'worker/worker.py'
+      - 'tests/test_public_candidates.py'
+      - 'tests/test_open_to_work.py'
+      - '.github/workflows/candidate-pipeline-checks.yml'
+permissions:
+  contents: read
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check JavaScript syntax
+        run: node --check lib/direct-catalog.mjs && node --check lib/supabase-store.mjs && node --check lib/linkedin-service.mjs
+      - name: Install detector test dependency
+        run: python -m pip install Pillow
+      - name: Run badge and discovery tests
+        working-directory: worker
+        env:
+          PYTHONPATH: .:..
+        run: python -m unittest discover -s ../tests -p 'test_open_to_work.py' -v && python -m unittest discover -s ../tests -p 'test_public_candidates.py' -v
