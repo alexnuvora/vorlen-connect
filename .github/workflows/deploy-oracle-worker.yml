@@ -21,12 +21,15 @@ jobs:
       - name: Install image detector test dependency
         run: python3 -m pip install --disable-pip-version-check Pillow
       - name: Verify Python source
-        run: python3 -m py_compile worker/worker.py worker/native_jobs.py worker/open_to_work.py
+        run: python3 -m py_compile worker/worker.py worker/native_jobs.py worker/open_to_work.py worker/public_candidates.py worker/public_candidates.py
       - name: Test public jobs parser
         run: python3 -m unittest discover -s tests -p 'test_native_jobs.py' -v
       - name: Test Open to Work detector
         working-directory: worker
-        run: PYTHONPATH=. python3 -m unittest discover -s ../tests -p 'test_open_to_work.py' -v
+        run: PYTHONPATH=.:.. python3 -m unittest discover -s ../tests -p 'test_open_to_work.py' -v
+      - name: Test public candidate pipeline
+        working-directory: worker
+        run: PYTHONPATH=.:.. python3 -m unittest discover -s ../tests -p 'test_public_candidates.py' -v
       - name: Deploy isolated systemd service
         env:
           SSH_PRIVATE_KEY: ${{ secrets.VORLEN_WORKER_SSH_PRIVATE_KEY }}
@@ -44,7 +47,7 @@ jobs:
           ssh "${SSH_OPTS[@]}" "$HOST" 'set -e; test "$(hostname)" = vorlen; test "$(id -u)" -ne 0; sudo -n true'
           printf 'VORLEN_WORKER_API_URL=%s\\n' 'https://connect.vorlen.co.uk/api/worker' > worker.env
           chmod 600 worker.env
-          scp "${SSH_OPTS[@]}" worker/worker.py worker/native_jobs.py worker/open_to_work.py worker/vorlen-worker.service worker.env "$HOST:/tmp/"
+          scp "${SSH_OPTS[@]}" worker/worker.py worker/native_jobs.py worker/open_to_work.py worker/public_candidates.py worker/vorlen-worker.service worker.env "$HOST:/tmp/"
           rm -f worker.env
           ssh "${SSH_OPTS[@]}" "$HOST" '
             set -eu
@@ -56,10 +59,13 @@ jobs:
             sudo -n install -o root -g root -m 0644 /tmp/worker.py /opt/vorlen-worker/worker.py
             sudo -n install -o root -g root -m 0644 /tmp/native_jobs.py /opt/vorlen-worker/native_jobs.py
             sudo -n install -o root -g root -m 0644 /tmp/open_to_work.py /opt/vorlen-worker/open_to_work.py
+            sudo -n install -o root -g root -m 0644 /tmp/public_candidates.py /opt/vorlen-worker/public_candidates.py
+            sudo -n /opt/vorlen-session-venv/bin/pip install --disable-pip-version-check --quiet Pillow pytesseract
+            sudo -n env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends tesseract-ocr
             sudo -n install -d -o root -g root -m 0700 /etc/vorlen-worker
             sudo -n install -o root -g root -m 0600 /tmp/worker.env /etc/vorlen-worker/worker.env
             sudo -n install -o root -g root -m 0644 /tmp/vorlen-worker.service /etc/systemd/system/vorlen-worker.service
-            rm -f /tmp/worker.py /tmp/native_jobs.py /tmp/open_to_work.py /tmp/vorlen-worker.service /tmp/worker.env
+            rm -f /tmp/worker.py /tmp/native_jobs.py /tmp/open_to_work.py /tmp/public_candidates.py /tmp/vorlen-worker.service /tmp/worker.env
             sudo -n systemctl daemon-reload
             sudo -n systemctl enable --now vorlen-worker
             sudo -n systemctl restart vorlen-worker
