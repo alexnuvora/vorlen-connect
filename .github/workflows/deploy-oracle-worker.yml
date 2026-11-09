@@ -6,6 +6,7 @@ on:
       - '.github/workflows/deploy-oracle-worker.yml'
       - 'worker/**'
       - 'tests/test_open_to_work.py'
+      - 'tests/test_public_candidates.py'
   workflow_dispatch:
 permissions:
   contents: read
@@ -21,7 +22,7 @@ jobs:
       - name: Install image detector test dependency
         run: python3 -m pip install --disable-pip-version-check Pillow
       - name: Verify Python source
-        run: python3 -m py_compile worker/worker.py worker/native_jobs.py worker/open_to_work.py worker/public_candidates.py worker/public_candidates.py
+        run: python3 -m py_compile worker/worker.py worker/native_jobs.py worker/open_to_work.py worker/public_candidates.py
       - name: Test public jobs parser
         run: python3 -m unittest discover -s tests -p 'test_native_jobs.py' -v
       - name: Test Open to Work detector
@@ -61,6 +62,7 @@ jobs:
             sudo -n install -o root -g root -m 0644 /tmp/open_to_work.py /opt/vorlen-worker/open_to_work.py
             sudo -n install -o root -g root -m 0644 /tmp/public_candidates.py /opt/vorlen-worker/public_candidates.py
             sudo -n /opt/vorlen-session-venv/bin/pip install --disable-pip-version-check --quiet Pillow pytesseract
+            sudo -n apt-get update -qq
             sudo -n env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends tesseract-ocr
             sudo -n install -d -o root -g root -m 0700 /etc/vorlen-worker
             sudo -n install -o root -g root -m 0600 /tmp/worker.env /etc/vorlen-worker/worker.env
