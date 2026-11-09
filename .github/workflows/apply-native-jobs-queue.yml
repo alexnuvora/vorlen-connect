@@ -29,7 +29,7 @@ jobs:
           test -n "${SUPABASE_ACCESS_TOKEN:-}"
           test -n "${SUPABASE_DB_PASSWORD:-}"
           supabase link --project-ref oulypjxpbrlxbjrxzryf --password "$SUPABASE_DB_PASSWORD"
-          supabase db push --linked
+          supabase db push --linked --yes
           node --input-type=module <<'NODE'
           const query = "select exists(select 1 from pg_proc where proname='vc_native_jobs_control' and pronamespace='public'::regnamespace) as queue_control, exists(select 1 from pg_proc where proname='vc_candidate_search_control' and pronamespace='public'::regnamespace) as candidate_search_control, exists(select 1 from pg_proc where proname='vc_worker_progress' and pronamespace='public'::regnamespace) as progress_control, exists(select 1 from pg_constraint where conname='vc_worker_jobs_kind_check') as queue_kind_constraint, (select pg_get_constraintdef(oid) like '%public_candidate_search%' from pg_constraint where conname='vc_worker_jobs_kind_check' limit 1) as candidate_job_kind";
           const res = await fetch('https://api.supabase.com/v1/projects/oulypjxpbrlxbjrxzryf/database/query', {method:'POST',headers:{Authorization:'Bearer '+process.env.SUPABASE_ACCESS_TOKEN,'Content-Type':'application/json'},body:JSON.stringify({query,read_only:true})});
