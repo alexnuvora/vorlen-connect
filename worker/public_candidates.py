@@ -10,6 +10,7 @@ from html.parser import HTMLParser
 from urllib.parse import urlencode, urlparse
 from urllib.request import Request, build_opener, HTTPSHandler, BaseHandler
 from urllib.error import HTTPError, URLError
+from ipaddress import ip_address
 from xml.etree import ElementTree as ET
 import re, time
 
@@ -96,6 +97,30 @@ def candidate_name(title):
     value=re.sub(r"\s*\|\s*LinkedIn.*$","",value,flags=re.I).strip()
     return value[:160] if 1<len(value.split())<=6 else None
 
+def verify_public_cv(url):
+    try:
+        u=urlparse(url)
+        host=(u.hostname or "").lower()
+        if u.scheme!="https" or not host or host.endswith((".local",".internal",".localhost")):
+            return False
+        try:
+            ip=ip_address(host)
+            if not ip.is_global:return False
+        except ValueError:
+            if "." not in host:return False
+        req=Request(url,method="HEAD",headers={"User-Agent":"VorlenConnectPublicResearch/1.0","Accept":"application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"})
+        class NoRedirect(BaseHandler):
+            def redirect_request(self, req, fp, code, msg, headers, newurl):
+                raise ValueError("CV_REDIRECT_REJECTED")
+        with build_opener(NoRedirect,HTTPSHandler()).open(req,timeout=8) as response:
+            if response.status!=200:return False
+            mime=(response.headers.get("Content-Type") or "").split(";")[0].lower()
+            disposition=(response.headers.get("Content-Disposition") or "").lower()
+            path=(u.path or "").lower()
+            return mime in ("application/pdf","application/msword","application/vnd.openxmlformats-officedocument.wordprocessingml.document") or path.endswith((".pdf",".doc",".docx")) or any(x in disposition for x in (".pdf",".docx",".doc"))
+    except Exception:
+        return False
+
 def run_candidate_search(filters, progress):
     role=str(filters.get("role") or filters.get("keywords") or "").strip()[:120]
     location=str(filters.get("location") or "").strip()[:120]
@@ -104,7 +129,7 @@ def run_candidate_search(filters, progress):
     limit=max(1,min(MAX_RESULTS,int(filters.get("limit") or 10)))
     query=f'site:linkedin.com/in "{role}" "{location}" ("open to work" OR "#opentowork")'
     links=search_web(query,limit*2)
-    candidates=[];seen=set();failures=[]
+    candidates=[];seen=set();failures=[];scanned=0;unverified=0
     for hit in links:
         url=hit["url"].split("?")[0].rstrip("/")
         if not linkedin_url(url) or url.lower() in seen: continue
@@ -119,13 +144,22 @@ def run_candidate_search(filters, progress):
                 badge=inspect_avatar(image)
             except Exception as e:
                 badge={"is_open_to_work":False,"status":"unverified","confidence":0.0,"reason":str(e)[:120]}
-        # CV discovery is a separate public-web query; never gate candidate inclusion.
+        scanned+=1
+        if badge.get('is_open_to_work') is not True:
+            unverified+=1
+            progress({"items":candidates,"returned":len(candidates),"verified":len(candidates),"scanned":scanned,"unverified":unverified,"cv_available":sum(1 for x in candidates if x["cv_status"]=="available"),"failures":failures,"complete":False})
+            continue
+        # CV discovery is supplementary and is performed only for verified candidates.
         cv=[]
         try:
             cv=search_web(f'"{name}" "{role}" (CV OR resume) filetype:pdf',MAX_CV_RESULTS)
         except Exception as e:
             failures.append({"stage":"cv_search","candidate":name,"reason":str(e)[:120]})
-        cv_links=[x["url"] for x in cv if urlparse(x["url"]).scheme=="https"][:MAX_CV_RESULTS]
+        cv_links=[]
+        for hit_cv in cv:
+            if verify_public_cv(hit_cv["url"]):
+                cv_links.append(hit_cv["url"])
+            if len(cv_links)>=MAX_CV_RESULTS:break
         row={
             "name":name,"role":role,"location":location,"linkedin_url":url,
             "profile_source":"Bing public web index","profile_title":meta.get("page_title") or hit["title"],
@@ -135,17 +169,17 @@ def run_candidate_search(filters, progress):
         }
         candidates.append(row)
         progress({"items":candidates,"returned":len(candidates),
-                  "verified":sum(1 for x in candidates if x["open_to_work_verified"]),
+                  "verified":len(candidates),"scanned":scanned,"unverified":unverified,
                   "cv_available":sum(1 for x in candidates if x["cv_status"]=="available"),
                   "failures":failures,"complete":False})
         time.sleep(.25)
         if len(candidates)>=limit: break
     result={"items":candidates,"returned":len(candidates),
-            "verified":sum(1 for x in candidates if x["open_to_work_verified"]),
+            "verified":len(candidates),"scanned":scanned,"unverified":unverified,
             "cv_available":sum(1 for x in candidates if x["cv_status"]=="available"),
             "failures":failures,"complete":True,
             "source":"public_web_search_no_linkedin_login",
             "verification_rule":"green profile-photo frame AND Open to Work OCR text",
-            "unverified_excluded_from_verified":True}
+            "unverified_excluded_from_verified":True,"candidate_filter":"only image-verified Open to Work profiles are returned"}
     progress(result)
     return result
