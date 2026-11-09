@@ -5,6 +5,7 @@ on:
     paths:
       - 'supabase/migrations/20261023170000_native_linkedin_jobs_queue.sql'
       - 'supabase/migrations/20261023170100_extend_native_jobs_lease.sql'
+      - 'supabase/migrations/20261109070000_public_candidate_search.sql'
       - '.github/workflows/apply-native-jobs-queue.yml'
   workflow_dispatch:
 permissions:
@@ -30,10 +31,10 @@ jobs:
           supabase link --project-ref oulypjxpbrlxbjrxzryf --password "$SUPABASE_DB_PASSWORD"
           supabase db push --linked
           node --input-type=module <<'NODE'
-          const query = "select exists(select 1 from pg_proc where proname='vc_native_jobs_control' and pronamespace='public'::regnamespace) as queue_control, exists(select 1 from pg_proc where proname='vc_worker_progress' and pronamespace='public'::regnamespace) as progress_control, exists(select 1 from pg_constraint where conname='vc_worker_jobs_kind_check') as queue_kind_constraint";
+          const query = "select exists(select 1 from pg_proc where proname='vc_native_jobs_control' and pronamespace='public'::regnamespace) as queue_control, exists(select 1 from pg_proc where proname='vc_candidate_search_control' and pronamespace='public'::regnamespace) as candidate_search_control, exists(select 1 from pg_proc where proname='vc_worker_progress' and pronamespace='public'::regnamespace) as progress_control, exists(select 1 from pg_constraint where conname='vc_worker_jobs_kind_check') as queue_kind_constraint, (select pg_get_constraintdef(oid) like '%public_candidate_search%' from pg_constraint where conname='vc_worker_jobs_kind_check' limit 1) as candidate_job_kind";
           const res = await fetch('https://api.supabase.com/v1/projects/oulypjxpbrlxbjrxzryf/database/query', {method:'POST',headers:{Authorization:'Bearer '+process.env.SUPABASE_ACCESS_TOKEN,'Content-Type':'application/json'},body:JSON.stringify({query,read_only:true})});
           if (!res.ok) throw Error('read-only schema audit failed: HTTP '+res.status);
           const body=await res.json(); const row=Array.isArray(body)?body[0]:body?.result?.[0];
-          if (!row?.queue_control || !row?.progress_control || !row?.queue_kind_constraint) throw Error('Native jobs queue schema incomplete');
+          if (!row?.queue_control || !row?.candidate_search_control || !row?.progress_control || !row?.queue_kind_constraint || !row?.candidate_job_kind) throw Error('Native jobs queue schema incomplete');
           console.log('PASS: native jobs queue, incremental progress RPC and job-kind constraint present');
           NODE
