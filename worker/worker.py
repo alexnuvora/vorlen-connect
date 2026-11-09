@@ -5,6 +5,7 @@ from cryptography.hazmat.primitives import serialization
 from datetime import datetime, timezone
 from pathlib import Path
 from native_jobs import claim_rows, run_job
+from public_candidates import run_candidate_search
 
 STOP=False
 def stop(_a,_b):
@@ -55,6 +56,15 @@ def main():
       result=run_job(filters,save)
       api('finish',id=job['id'],lease_token=job['lease_token'],success=True,result=result)
       detail='completed native public jobs search: '+str(result.get('returned',0))+' items'
+     elif kind=='public_candidate_search':
+      payload=job.get('payload') or {};filters=payload.get('filters') or {}
+      def save_candidates(result):
+       print('candidate search progress','returned',result.get('returned',0),'verified',result.get('verified',0),flush=True)
+       ok=api('progress',id=job['id'],lease_token=job['lease_token'],result=result)
+       if ok is False:raise RuntimeError('lease expired while saving candidate progress')
+      result=run_candidate_search(filters,save_candidates)
+      api('finish',id=job['id'],lease_token=job['lease_token'],success=True,result=result)
+      detail='completed public candidate search: '+str(result.get('returned',0))+' profiles, '+str(result.get('verified',0))+' verified Open to Work'
      elif kind=='health_probe':
       api('finish',id=job['id'],lease_token=job['lease_token'],success=True,result={'ok':True,'handled_by':'oracle-vorlen-1'})
       detail='completed health_probe'
