@@ -1,0 +1,37 @@
+name: McpOS Oracle host inspection
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/mcpos-oracle-host-inspection.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Inspect existing Oracle VM over SSH (read only)
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VORLEN_WORKER_SSH_PRIVATE_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          test -n "${SSH_PRIVATE_KEY:-}" || { echo '::error::Missing existing VORLEN_WORKER_SSH_PRIVATE_KEY in vorlen-connect'; exit 1; }
+          KEY="$(mktemp)"
+          trap 'rm -f "$KEY"' EXIT
+          printf '%s\n' "$SSH_PRIVATE_KEY" | tr -d '\r' > "$KEY"
+          ssh-keygen -y -P '' -f "$KEY" >/dev/null
+          ssh -i "$KEY" -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15 ubuntu@193.123.183.10 'bash -se' <<'REMOTE'
+          set -euo pipefail
+          echo '=== HOST ==='; hostname; . /etc/os-release; echo "$PRETTY_NAME"; uname -m; uptime
+          echo '=== CAPACITY ==='; free -h; df -h /
+          echo '=== CPU ==='; nproc; lscpu | grep -E 'Model name|Architecture|CPU\(s\)|Core|Socket|Hypervisor' | head -12
+          echo '=== LISTENERS ==='; ss -lntp | head -30
+          echo '=== RUNNING SERVICES ==='; systemctl list-units --type=service --state=running --no-pager --no-legend | head -40
+          echo '=== RUNTIMES ==='; for x in docker docker-compose node npm python3 nginx caddy; do command -v "$x" || true; done
+          echo '=== DOCKER ==='; if command -v docker >/dev/null 2>&1; then sudo -n docker ps --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}' || true; fi
+          echo '=== APPLICATION ROOTS ==='; for d in /opt /srv /var/www; do [ ! -d "$d" ] || sudo -n find "$d" -maxdepth 2 -mindepth 1 -type d -printf '%p\n' 2>/dev/null | head -40; done
+          echo '=== SECURITY / HOST ID ==='; id; sudo -n ufw status 2>/dev/null || true
+          REMOTE
