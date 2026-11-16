@@ -1,0 +1,24 @@
+name: Check McpOS Oracle instance
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/check-mcpos-oracle-instance.yml']
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install OCI CLI
+        run: python -m pip install --user oci-cli && echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Check for McpOS instance (read only)
+        env:
+          OCI_CONFIG_SECRET: ${{ secrets.VORLEN_OCI_CONFIG }}
+          OCI_API_PRIVATE_KEY: ${{ secrets.VORLEN_OCI_API_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.oci"
+          printf '%s' "$OCI_API_PRIVATE_KEY" > "$HOME/.oci/oci_api_key.pem"; chmod 600 "$HOME/.oci/oci_api_key.pem"
+          printf '%s\n' "$OCI_CONFIG_SECRET" > "$HOME/.oci/config"
+          sed -i "s#^[[:space:]]*key_file[[:space:]]*=.*#key_file=$HOME/.oci/oci_api_key.pem#" "$HOME/.oci/config"
+          oci compute instance list --compartment-id 'ocid1.tenancy.oc1..aaaaaaaaclnmrik5hypi734mzstra5mi752uy5ljxzihburzc3athnmpxw2a' --all --query 'data[].{name:"display-name",id:id,state:"lifecycle-state",shape:shape}' --output json
