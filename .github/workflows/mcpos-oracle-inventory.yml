@@ -18,38 +18,37 @@ jobs:
         run: |
           python -m pip install --user oci-cli
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-      - name: Inspect Oracle VM, network rules and full A1 quota (read only)
+      - name: Inspect Oracle VM and A1 quota (read only)
         env:
           OCI_CONFIG_SECRET: ${{ secrets.VORLEN_OCI_CONFIG }}
           OCI_API_PRIVATE_KEY: ${{ secrets.VORLEN_OCI_API_PRIVATE_KEY }}
         shell: bash
         run: |
           set -euo pipefail
-          test -n "$OCI_CONFIG_SECRET"
-          test -n "$OCI_API_PRIVATE_KEY"
+          test -n "$OCI_CONFIG_SECRET"; test -n "$OCI_API_PRIVATE_KEY"
           mkdir -p "$HOME/.oci"
-          printf '%s' "$OCI_API_PRIVATE_KEY" > "$HOME/.oci/oci_api_key.pem"
-          chmod 600 "$HOME/.oci/oci_api_key.pem"
+          printf '%s' "$OCI_API_PRIVATE_KEY" > "$HOME/.oci/oci_api_key.pem"; chmod 600 "$HOME/.oci/oci_api_key.pem"
           printf '%s\n' "$OCI_CONFIG_SECRET" > "$HOME/.oci/config"
-          sed -i "s#^[[:space:]]*key_file[[:space:]]*=.*#key_file=$HOME/.oci/oci_api_key.pem#" "$HOME/.oci/config"
-          chmod 600 "$HOME/.oci/config"
+          sed -i "s#^[[:space:]]*key_file[[:space:]]*=.*#key_file=$HOME/.oci/oci_api_key.pem#" "$HOME/.oci/config"; chmod 600 "$HOME/.oci/config"
           INSTANCE_ID='ocid1.instance.oc1.uk-london-1.anwgiljtdycw3nacwvc2l7y6y5mgkfyn2oawv2locpcblhzvewsdrxn243ca'
           TENANCY_ID='ocid1.tenancy.oc1..aaaaaaaaclnmrik5hypi734mzstra5mi752uy5ljxzihburzc3athnmpxw2a'
-          echo '=== Instance ==='
-          oci compute instance get --instance-id "$INSTANCE_ID" --query 'data.{name:"display-name",state:"lifecycle-state",shape:shape,availabilityDomain:"availability-domain",subnet:"subnet-id"}' --output json
+          echo '=== Existing sandbox VM ==='
+          oci compute instance get --instance-id "$INSTANCE_ID" --query 'data.{name:"display-name",state:"lifecycle-state",shape:shape,availabilityDomain:"availability-domain"}' --output json
           VNIC_ID="$(oci compute vnic-attachment list --compartment-id "$TENANCY_ID" --instance-id "$INSTANCE_ID" --query 'data[0]."vnic-id"' --raw-output)"
-          echo '=== VNIC ==='
+          echo '=== Sandbox VNIC ==='
           oci network vnic get --vnic-id "$VNIC_ID" --query 'data.{privateIp:"private-ip",publicIp:"public-ip",subnetId:"subnet-id",nsgIds:"nsg-ids"}' --output json > "$RUNNER_TEMP/vnic.json"
           cat "$RUNNER_TEMP/vnic.json"
-          SUBNET_ID="$(jq -r '.data.subnetId' "$RUNNER_TEMP/vnic.json")"
-          echo '=== Subnet security lists and routing ==='
-          oci network subnet get --subnet-id "$SUBNET_ID" --query 'data.{cidr:"cidr-block",securityLists:"security-list-ids",routeTable:"route-table-id",prohibitPublicIp:"prohibit-public-ip-on-vnic"}' --output json > "$RUNNER_TEMP/subnet.json"
-          cat "$RUNNER_TEMP/subnet.json"
-          jq -r '.data.securityLists[]' "$RUNNER_TEMP/subnet.json" | while read -r SL; do echo "=== Security list $SL ingress ==="; oci network security-list get --security-list-id "$SL" --query 'data.{name:"display-name",ingress:"ingress-security-rules"}' --output json; done
-          jq -r '.data.nsgIds[]?' "$RUNNER_TEMP/vnic.json" | while read -r NSG; do echo "=== NSG $NSG ingress ==="; oci network nsg rules list --network-security-group-id "$NSG" --all --query 'data.items[?direction==`INGRESS`].{protocol:protocol,source:"source",sourceType:"source-type",tcp:"tcp-options"}' --output json; done
-          echo '=== A1 shape details ==='
+          SUBNET_ID="$(jq -r '.subnetId' "$RUNNER_TEMP/vnic.json")"
+          echo '=== Subnet security and routing ==='
+          if [ -n "$SUBNET_ID" ] && [ "$SUBNET_ID" != null ]; then
+            if oci network subnet get --subnet-id "$SUBNET_ID" --query 'data.{cidr:"cidr-block",securityLists:"security-list-ids",routeTable:"route-table-id"}' --output json > "$RUNNER_TEMP/subnet.json"; then
+              cat "$RUNNER_TEMP/subnet.json"
+              jq -r '.securityLists[]?' "$RUNNER_TEMP/subnet.json" | while read -r SL; do echo "=== Security list $SL ==="; oci network security-list get --security-list-id "$SL" --query 'data.{name:"display-name",ingress:"ingress-security-rules"}' --output json || true; done
+            else echo 'Subnet details unavailable to this API principal; continuing to quota inspection.'; fi
+          fi
+          echo '=== A1 shape in London AD-1 ==='
           AD="$(oci compute instance get --instance-id "$INSTANCE_ID" --query 'data."availability-domain"' --raw-output)"
           oci compute shape list --compartment-id "$TENANCY_ID" --availability-domain "$AD" --all --query 'data[?contains(shape, `VM.Standard.A1.Flex`)].{shape:shape,ocpus:ocpus,memoryInGBs:"memory-in-gbs",networkBandwidthInGbps:"networking-bandwidth-in-gbps"}' --output json
-          echo '=== All compute A1 quota entries ==='
+          echo '=== A1 / ARM compute quotas (all pages) ==='
           oci limits value list --compartment-id "$TENANCY_ID" --service-name compute --all --output json | jq '[.data[] | select((.name|ascii_downcase|contains("a1")) or (.name|ascii_downcase|contains("arm"))) | {name,limit:.value,used,available,scopeType:."scope-type"}]'
-          echo 'Read-only inspection complete; no resources changed.'
+          echo 'Read-only inventory complete; no cloud resources changed.'
