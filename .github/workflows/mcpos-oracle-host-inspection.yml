@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
-      - name: Inspect existing Oracle VM over SSH (read only)
+      - name: Inspect existing Vorlen Oracle VM over SSH (read only)
         env:
           SSH_PRIVATE_KEY: ${{ secrets.VORLEN_WORKER_SSH_PRIVATE_KEY }}
         shell: bash
@@ -23,8 +23,9 @@ jobs:
           trap 'rm -f "$KEY"' EXIT
           printf '%s\n' "$SSH_PRIVATE_KEY" | tr -d '\r' > "$KEY"
           ssh-keygen -y -P '' -f "$KEY" >/dev/null
-          ssh -i "$KEY" -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15 ubuntu@193.123.183.10 'bash -se' <<'REMOTE'
+          timeout 120 ssh -i "$KEY" -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20 ubuntu@145.241.230.145 'bash -se' <<'REMOTE'
           set -euo pipefail
+          test "$(hostname)" = vorlen
           echo '=== HOST ==='; hostname; . /etc/os-release; echo "$PRETTY_NAME"; uname -m; uptime
           echo '=== CAPACITY ==='; free -h; df -h /
           echo '=== CPU ==='; nproc; lscpu | grep -E 'Model name|Architecture|CPU\(s\)|Core|Socket|Hypervisor' | head -12
