@@ -1,5 +1,8 @@
 name: McpOS Oracle inventory (shared OCI credentials)
 on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/mcpos-oracle-inventory.yml']
   workflow_dispatch:
 permissions:
   contents: read
