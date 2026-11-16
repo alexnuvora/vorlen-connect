@@ -1,0 +1,81 @@
+name: Provision McpOS Oracle A1 server
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/provision-mcpos-oracle.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: mcpos-oracle-provisioning
+  cancel-in-progress: false
+jobs:
+  provision:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Install OCI CLI and jq
+        run: |
+          python -m pip install --user oci-cli
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Provision dedicated McpOS A1 VM in existing London VCN
+        env:
+          OCI_CONFIG_SECRET: ${{ secrets.VORLEN_OCI_CONFIG }}
+          OCI_API_PRIVATE_KEY: ${{ secrets.VORLEN_OCI_API_PRIVATE_KEY }}
+          SSH_PRIVATE_KEY: ${{ secrets.VORLEN_WORKER_SSH_PRIVATE_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$OCI_CONFIG_SECRET"; test -n "$OCI_API_PRIVATE_KEY"; test -n "$SSH_PRIVATE_KEY"
+          mkdir -p "$HOME/.oci" "$HOME/.ssh"
+          printf '%s' "$OCI_API_PRIVATE_KEY" > "$HOME/.oci/oci_api_key.pem"; chmod 600 "$HOME/.oci/oci_api_key.pem"
+          printf '%s\n' "$OCI_CONFIG_SECRET" > "$HOME/.oci/config"
+          sed -i "s#^[[:space:]]*key_file[[:space:]]*=.*#key_file=$HOME/.oci/oci_api_key.pem#" "$HOME/.oci/config"; chmod 600 "$HOME/.oci/config"
+          printf '%s\n' "$SSH_PRIVATE_KEY" | tr -d '\r' > "$HOME/.ssh/mcpos-bootstrap-key"; chmod 600 "$HOME/.ssh/mcpos-bootstrap-key"
+          ssh-keygen -y -P '' -f "$HOME/.ssh/mcpos-bootstrap-key" > "$HOME/.ssh/mcpos-bootstrap-key.pub"
+          TENANCY_ID='ocid1.tenancy.oc1..aaaaaaaaclnmrik5hypi734mzstra5mi752uy5ljxzihburzc3athnmpxw2a'
+          SANDBOX_ID='ocid1.instance.oc1.uk-london-1.anwgiljtdycw3nacwvc2l7y6y5mgkfyn2oawv2locpcblhzvewsdrxn243ca'
+          IMAGE_ID='ocid1.image.oc1.uk-london-1.aaaaaaaaspwktwbu7rhxxahpkkomxoodubywaqwehzsp7s4wfhdj4vwpvowa'
+          echo '=== Guard: existing McpOS VM ==='
+          EXISTING="$(oci compute instance list --compartment-id "$TENANCY_ID" --all --query 'data[?"display-name"==`mcpos-control-centre`].id | [0]' --raw-output)"
+          if [ -n "$EXISTING" ] && [ "$EXISTING" != None ]; then
+            echo 'McpOS VM already exists; refusing to create a duplicate.'
+            oci compute instance get --instance-id "$EXISTING" --query 'data.{id:id,name:"display-name",state:"lifecycle-state",shape:shape}' --output json
+            exit 0
+          fi
+          echo '=== Guard: A1 quota / existing A1 allocations ==='
+          A1_INSTANCES="$(oci compute instance list --compartment-id "$TENANCY_ID" --all --query 'data[?shape==`VM.Standard.A1.Flex`].{name:"display-name",state:"lifecycle-state"}' --output json)"
+          echo "$A1_INSTANCES"
+          if [ "$(printf '%s' "$A1_INSTANCES" | jq 'length')" -gt 0 ]; then echo 'An A1 instance already exists in this tenancy. Stopping to avoid consuming quota unexpectedly.'; exit 1; fi
+          echo '=== Resolve existing London subnet ==='
+          AD="$(oci compute instance get --instance-id "$SANDBOX_ID" --query 'data."availability-domain"' --raw-output)"
+          VNIC_ID="$(oci compute vnic-attachment list --compartment-id "$TENANCY_ID" --instance-id "$SANDBOX_ID" --query 'data[0]."vnic-id"' --raw-output)"
+          SUBNET_ID="$(oci network vnic get --vnic-id "$VNIC_ID" --query 'data."subnet-id"' --raw-output)"
+          SUBNET_JSON="$(oci network subnet get --subnet-id "$SUBNET_ID" --output json)"
+          VCN_ID="$(printf '%s' "$SUBNET_JSON" | jq -r '.data."vcn-id"')"
+          SECURITY_LIST_ID="$(printf '%s' "$SUBNET_JSON" | jq -r '.data."security-list-ids"[0]')"
+          echo "Availability domain: $AD"
+          echo "Subnet: $SUBNET_ID"
+          echo "VCN: $VCN_ID"
+          echo '=== Open standard web ports in the existing subnet security list ==='
+          oci network security-list get --security-list-id "$SECURITY_LIST_ID" --output json > "$RUNNER_TEMP/security-list.json"
+          jq '.data."ingress-security-rules" + [
+            {"protocol":"6","source":"0.0.0.0/0","sourceType":"CIDR_BLOCK","isStateless":false,"tcpOptions":{"destinationPortRange":{"min":80,"max":80}}},
+            {"protocol":"6","source":"0.0.0.0/0","sourceType":"CIDR_BLOCK","isStateless":false,"tcpOptions":{"destinationPortRange":{"min":443,"max":443}}}
+          ] | unique_by([.protocol,.source,.tcpOptions.destinationPortRange.min,.tcpOptions.destinationPortRange.max])' "$RUNNER_TEMP/security-list.json" > "$RUNNER_TEMP/ingress-rules.json"
+          oci network security-list update --security-list-id "$SECURITY_LIST_ID" --ingress-security-rules "file://$RUNNER_TEMP/ingress-rules.json" --force
+          echo '=== Launch dedicated 2 OCPU / 12 GB Ampere VM ==='
+          oci compute instance launch --availability-domain "$AD" --compartment-id "$TENANCY_ID" --display-name mcpos-control-centre --shape VM.Standard.A1.Flex --shape-config '{"ocpus":2,"memoryInGBs":12}' --image-id "$IMAGE_ID" --subnet-id "$SUBNET_ID" --assign-public-ip true --ssh-authorized-keys-file "$HOME/.ssh/mcpos-bootstrap-key.pub" --boot-volume-size-in-gbs 50 --wait-for-state RUNNING --wait-interval-seconds 30 --max-wait-seconds 1800 --output json > "$RUNNER_TEMP/instance.json"
+          INSTANCE_ID="$(jq -r '.data.id' "$RUNNER_TEMP/instance.json")"
+          echo "Created instance: $INSTANCE_ID"
+          echo '=== Wait for public IP ==='
+          for i in $(seq 1 30); do
+            VNIC_ID="$(oci compute vnic-attachment list --compartment-id "$TENANCY_ID" --instance-id "$INSTANCE_ID" --query 'data[0]."vnic-id"' --raw-output)"
+            if [ -n "$VNIC_ID" ] && [ "$VNIC_ID" != None ]; then
+              IP="$(oci network vnic get --vnic-id "$VNIC_ID" --query 'data."public-ip"' --raw-output)"
+              if [ -n "$IP" ] && [ "$IP" != None ]; then echo "MCPOS_PUBLIC_IP=$IP" >> "$GITHUB_OUTPUT"; echo "McpOS server public IP: $IP"; break; fi
+            fi
+            sleep 10
+          done
+          test -n "${IP:-}" && test "$IP" != None
+          echo 'Dedicated McpOS Oracle VM provisioned. Existing Vorlen services and the cloudbox-sandbox VM were not changed.'
