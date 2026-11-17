@@ -56,9 +56,9 @@ jobs:
             {"protocol":"6","source":"0.0.0.0/0","sourceType":"CIDR_BLOCK","isStateless":false,"tcpOptions":{"destinationPortRange":{"min":443,"max":443}}}
           ] | unique_by([.protocol,.source,.tcpOptions.destinationPortRange.min,.tcpOptions.destinationPortRange.max])' "$RUNNER_TEMP/security-list.json" > "$RUNNER_TEMP/ingress-rules.json"
           oci network security-list update --security-list-id "$SECURITY_LIST_ID" --ingress-security-rules "file://$RUNNER_TEMP/ingress-rules.json" --force
-          echo '=== Try A1 placement in AD-3 first, then AD-1 ==='
+          echo '=== Try A1 placement in AD-2, then AD-3, then AD-1 ==='
           INSTANCE_ID=''
-          for CANDIDATE_AD in 'nkVo:UK-LONDON-1-AD-3' 'nkVo:UK-LONDON-1-AD-1'; do
+          for CANDIDATE_AD in 'nkVo:UK-LONDON-1-AD-2' 'nkVo:UK-LONDON-1-AD-3' 'nkVo:UK-LONDON-1-AD-1'; do
             echo "Attempting 2 OCPU / 12 GB in $CANDIDATE_AD"
             if oci compute instance launch --availability-domain "$CANDIDATE_AD" --compartment-id "$TENANCY_ID" --display-name mcpos-control-centre --shape VM.Standard.A1.Flex --shape-config '{"ocpus":2,"memoryInGBs":12}' --image-id "$IMAGE_ID" --subnet-id "$SUBNET_ID" --assign-public-ip true --ssh-authorized-keys-file "$HOME/.ssh/mcpos-bootstrap-key.pub" --boot-volume-size-in-gbs 50 --wait-for-state RUNNING --wait-interval-seconds 30 --max-wait-seconds 900 --output json > "$RUNNER_TEMP/instance.json"; then
               INSTANCE_ID="$(jq -r '.data.id' "$RUNNER_TEMP/instance.json")"
